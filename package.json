@@ -1,0 +1,38 @@
+{
+  "name": "ai-portfolio-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@12",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:evidenceflow": "npm --workspace apps/evidenceflow run dev",
+    "dev:quotesense": "npm --workspace apps/quotesense run dev",
+    "dev:webqa": "npm --workspace apps/webqa run dev",
+    "dev:flowpilot": "npm --workspace apps/flowpilot run dev",
+    "dev:legacylens": "npm --workspace apps/legacylens run dev",
+    "lint": "eslint .",
+    "build": "npm run build:apps",
+    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/webqa run build && npm --workspace apps/flowpilot run build && npm --workspace apps/legacylens run build",
+    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/webqa run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/legacylens run typecheck"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "eslint": "^9.29.0",
+    "@eslint/js": "^9.29.0",
+    "typescript-eslint": "^8.35.0",
+    "globals": "^16.2.0"
+  },
+  "type": "module",
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@portfolio/quotesense",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@portfolio/api-client": "0.1.0",
+    "@portfolio/session": "0.1.0",
+    "@portfolio/types": "0.1.0",
+    "@portfolio/ui": "0.1.0",
+    "@portfolio/workflow": "0.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {}
+}
