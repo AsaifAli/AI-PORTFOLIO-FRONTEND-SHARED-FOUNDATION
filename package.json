@@ -15,8 +15,10 @@
     "dev:legacylens": "npm --workspace apps/legacylens run dev",
     "lint": "eslint .",
     "build": "npm run build:apps",
-    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/webqa run build && npm --workspace apps/flowpilot run build && npm --workspace apps/legacylens run build",
-    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/webqa run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/legacylens run typecheck"
+    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/webqa run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build && npm --workspace apps/legacylens run build",
+    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/webqa run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/evaluation-harness run typecheck && npm --workspace apps/legacylens run typecheck",
+    "dev:evaluation-harness": "npm --workspace apps/evaluation-harness run dev",
+    "test:evaluation-harness": "node --test apps/evaluation-harness/tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
