@@ -1,4 +1,4 @@
-const PROJECTS = ["evidenceflow", "quotesense"];
+const PROJECTS = ["evidenceflow", "quotesense", "flowpilot"];
 
 const METRIC_ALLOWLIST = {
   evidenceflow: [
@@ -19,6 +19,15 @@ const METRIC_ALLOWLIST = {
     "risk_f1",
     "schema_validity",
     "recommendation_consistency",
+  ],
+  flowpilot: [
+    "workflow_completion",
+    "step_coverage",
+    "approval_compliance",
+    "retry_recovery",
+    "state_integrity",
+    "error_classification_accuracy",
+    "audit_traceability",
   ],
 };
 
@@ -50,7 +59,7 @@ function latestDateForTarget(runs, target) {
   return dates.sort().at(-1) ?? null;
 }
 
-/** Whitelist replay scores and metrics for the two public flagship applications. */
+/** Whitelist replay scores and metrics for the three public studio applications. */
 export function parseQuality(value) {
   if (!isRecord(value) || !isRecord(value.targets)) return null;
   const targets = {};
@@ -112,9 +121,10 @@ export function parseActivity(value) {
   if (!isRecord(value) || !isRecord(value.projects)) return null;
   const evidenceflow = parseProjectSummary(value.projects.evidenceflow);
   const quotesense = parseProjectSummary(value.projects.quotesense);
-  if (!evidenceflow || !quotesense) return null;
+  const flowpilot = parseProjectSummary(value.projects.flowpilot);
+  if (!evidenceflow || !quotesense || !flowpilot) return null;
   return {
     totalEvents: boundedCount(value.total_events),
-    projects: { evidenceflow, quotesense },
+    projects: { evidenceflow, quotesense, flowpilot },
   };
 }

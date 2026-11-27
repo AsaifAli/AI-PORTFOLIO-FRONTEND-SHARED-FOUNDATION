@@ -24,6 +24,13 @@ const metricLabels: Record<string, string> = {
   risk_f1: "Risk F1",
   schema_validity: "Schema validity",
   recommendation_consistency: "Recommendation consistency",
+  workflow_completion: "Workflow completion",
+  step_coverage: "Required step coverage",
+  approval_compliance: "Approval compliance",
+  retry_recovery: "Retry recovery",
+  state_integrity: "Execution-state integrity",
+  error_classification_accuracy: "Error classification",
+  audit_traceability: "Audit traceability",
 };
 
 function percent(value: number | undefined): string {
@@ -51,7 +58,7 @@ function ApplicationCard({
   snapshot,
 }: {
   name: string;
-  slug: "evidenceflow" | "quotesense";
+  slug: "evidenceflow" | "quotesense" | "flowpilot";
   description: string;
   snapshot: DashboardSnapshot | null;
 }) {
@@ -69,7 +76,9 @@ function ApplicationCard({
     <Panel className={`application-card ${slug}`}>
       <div className="application-head">
         <div>
-          <span className="application-kicker">{slug === "evidenceflow" ? "01 / RESEARCH QUALITY" : "02 / PROCUREMENT QUALITY"}</span>
+          <span className="application-kicker">
+            {slug === "evidenceflow" ? "01 / RESEARCH QUALITY" : slug === "quotesense" ? "02 / PROCUREMENT QUALITY" : "03 / WORKFLOW QUALITY"}
+          </span>
           <h2>{name}</h2>
           <p>{description}</p>
         </div>
@@ -185,7 +194,7 @@ function App() {
         <section className="kpis" aria-label="Combined evaluation summary">
           <div className="kpi"><span>Recorded events</span><strong>{totalEvents ?? "—"}</strong><small>Content-free activity from connected apps</small></div>
           <div className="kpi"><span>Quality gates passed</span><strong>{targetCount ? `${gatePasses}/${targetCount}` : "—"}</strong><small>Latest replay evaluation results</small></div>
-          <div className="kpi"><span>Connected projects</span><strong>{snapshot?.activity ? 2 : "—"}</strong><small>EvidenceFlow and QuoteSense</small></div>
+          <div className="kpi"><span>Connected projects</span><strong>{snapshot?.activity ? 3 : "—"}</strong><small>EvidenceFlow, QuoteSense and FlowPilot</small></div>
           <div className="kpi"><span>Refresh cadence</span><strong>30s</strong><small>{loading ? "Updating snapshot" : "Automatic refresh enabled"}</small></div>
         </section>
 
@@ -193,11 +202,12 @@ function App() {
         <div className="application-grid">
           <ApplicationCard name="EvidenceFlow" slug="evidenceflow" description="Sparse-first retrieval, evidence provenance and citation verification." snapshot={snapshot}/>
           <ApplicationCard name="QuoteSense" slug="quotesense" description="Structured quotation extraction, deterministic scoring and procurement validation." snapshot={snapshot}/>
+          <ApplicationCard name="FlowPilot" slug="flowpilot" description="Workflow completion, human-approval compliance, retry recovery and execution-state integrity." snapshot={snapshot}/>
         </div>
 
         <section className="privacy-panel">
           <div><span>02 / DATA BOUNDARY</span><h2>Signals, not customer content.</h2></div>
-          <p>The Harness dashboard displays allowlisted scores and aggregate event counts. Prompts, uploaded documents, supplier details, source excerpts, model responses, event identifiers and provider credentials are not rendered here.</p>
+          <p>The Harness dashboard displays allowlisted scores and aggregate event counts. FlowPilot contributes workflow status, approval-pending state and execution metrics only. Prompts, generated drafts, uploaded documents, supplier details, source excerpts, model responses, event identifiers and provider credentials are not rendered here.</p>
         </section>
         <footer className="footer"><span>AI Engineering Studio · Engineering Assurance</span><span>Read-only API · no provider key required</span></footer>
       </main>

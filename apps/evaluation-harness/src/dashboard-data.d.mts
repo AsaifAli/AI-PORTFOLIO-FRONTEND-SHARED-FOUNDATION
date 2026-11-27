@@ -1,4 +1,4 @@
-export type EvaluationProjectSlug = "evidenceflow" | "quotesense";
+export type EvaluationProjectSlug = "evidenceflow" | "quotesense" | "flowpilot";
 
 export type ReplayTarget = {
   score: number;

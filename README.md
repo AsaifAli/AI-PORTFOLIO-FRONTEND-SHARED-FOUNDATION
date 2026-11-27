@@ -1,67 +1,95 @@
 # AI Portfolio Frontend Foundation
 
-Shared React + TypeScript + Vite foundation for the six portfolio AI applications.
+Shared React + TypeScript + Vite foundation for the active AI Engineering Studio product workspaces.
 
-## Goals
+## Active workspace applications
 
-- One implementation of BYOK session capture and API headers.
-- One API client and error model.
-- Shared UI primitives without forcing identical product UX.
-- Shared workflow/status components for agentic applications.
-- Five visually distinct application shells:
-  - EvidenceFlow — research workstation
-  - QuoteSense — procurement analytics
-  - WebQA — QA control room
-  - FlowPilot — automation operations console
-  - LegacyLens — developer modernization workbench
-  - Evaluation Harness — read-only engineering assurance dashboard
+- **EvidenceFlow** — research workstation for evidence-grounded RAG, streaming research, source inspection and document libraries.
+- **QuoteSense** — procurement analytics for multi-quotation analysis, deterministic scoring, risk review and exports.
+- **FlowPilot** — workflow operations for run creation, execution tracking, approvals and run history.
+- **Engineering Assurance** — read-only quality replay and aggregate application activity for EvidenceFlow, QuoteSense and FlowPilot.
 
-## Important deployment boundary
+## Shared architecture
 
-This repository is the frontend foundation. It does not replace the existing AI backends. Each app is designed to point at its existing FastAPI/project endpoint through `VITE_API_BASE_URL`.
+This repository owns frontend mechanics, not product backends. Each active app keeps its own information architecture, visual identity and domain-specific data mapping while using shared packages for:
 
-The existing Streamlit UIs should remain available until each React replacement has passed project-specific smoke tests.
+- API request handling, cookies and consistent error behavior (`packages/api-client`).
+- Secure session bootstrap and revocation (`packages/session`).
+- Shared typed contracts (`packages/types`).
+- Reusable visual primitives and design tokens (`packages/ui`).
+- Common workflow and status primitives (`packages/workflow`).
 
-## BYOK flow
+The Studio website pins this repository as `vendor/shared-frontend`, builds the active workspaces, and serves their static assets from the existing Cloudflare Worker under `/shared-frontend/<app>/`. This does not create another Render service or replace any application backend.
 
-The apps read the short-lived `portfolio_llm_session` query parameter, move it into `sessionStorage`, and send it as `Authorization: Bearer <JWT>` to the project backend. Provider API keys are never accepted by the frontend.
+## BYOK and session security
+
+The current contract is a single-use `portfolio_llm_handoff` code:
+
+1. The Studio creates a project-scoped, short-lived handoff code through its server-side Gateway integration.
+2. The receiving app removes the handoff code from the URL before making a network request.
+3. The app exchanges the code with the Studio's same-origin session endpoint using `credentials: include`.
+4. The Studio proxy exchanges the code with the Portfolio LLM Gateway and stores the returned project token in an HttpOnly, client-scoped cookie.
+5. The frontend reads only non-sensitive session metadata. API requests use the same-origin proxy and browser cookies; reusable Gateway bearer tokens are not stored in localStorage or sessionStorage.
+
+The legacy `portfolio_llm_session` bearer query parameter is rejected. Frontend code never accepts provider API keys.
+
+## Backend and deployment boundary
+
+- EvidenceFlow keeps its independent FastAPI/LangGraph backend.
+- QuoteSense keeps its independent FastAPI analysis API and its Streamlit fallback.
+- FlowPilot keeps its independent FastAPI workflow API/worker and its Streamlit fallback.
+- Engineering Assurance remains a separate read-only dashboard/API.
+- Each product retains its own state, authorization and data boundary. The shared frontend is not a shared product database or a replacement for backend authorization.
+
+In production, the Studio Worker proxies only explicitly allowlisted routes to fixed, operator-configured HTTPS origins. Unknown routes are denied. Product API base URLs are not accepted from client-controlled project data.
+
+## Rollout rule
+
+The shared React workspaces are built and bundled, but the Studio-wide rollout flag remains **off by default**. Do not enable it until authenticated browser QA has passed for client sign-in, BYOK handoff, product API behavior, sign-out/revocation and the complete critical workflow in each active app.
+
+Keep the existing product UIs available as rollback paths until each shared React workspace is proven against its live backend. Do not remove or change backend services as part of frontend rollout.
 
 ## Local development
 
 ```bash
-npm install
+npm ci
 npm run dev:evidenceflow
 ```
 
-Apps use Vite's standard dev server. Set `VITE_API_BASE_URL` in an app `.env.local` when the project backend is available locally.
-
-## Build
+The other active applications have corresponding scripts:
 
 ```bash
-npm run build
+npm run dev:quotesense
+npm run dev:flowpilot
+npm run dev:evaluation-harness
 ```
 
-## Adaptation rule
-
-Shared code is for mechanics and primitives. Each app owns its information architecture, visual identity, workflow presentation, and project-specific data mapping.
-
+The Vite development configuration uses same-origin API paths where possible. Set an app-specific `VITE_API_BASE_URL` only when a local backend runs on a separate origin.
 
 ## Validation
 
 ```bash
-npm install
 npm run lint
 npm run typecheck
-npm run build
+npm run test:workspace
+npm run build:workspace
 ```
 
-The repository uses npm workspaces; internal workspace packages use standard semver links compatible with npm 12.
+The shared build uses npm workspaces and the repository's pinned npm toolchain. The Studio build script runs workspace tests and builds the four active workspaces before copying their `dist` folders into the Worker static assets.
 
+## Product adaptation rule
 
-## Evaluation Harness frontend
+Share mechanics and primitives, not every screen. EvidenceFlow should feel like a research workstation, QuoteSense like a procurement decision cockpit, and FlowPilot like an operations console. Keep their typography, density, color accents, domain workflows and information architecture distinct while maintaining consistent navigation, session behavior, API error semantics and accessible interaction patterns.
 
-The `apps/evaluation-harness` workspace is a read-only React interface for the existing Evaluation Harness service. It consumes only `GET /health`, `GET /api/ai-quality`, and `GET /api/application-summary`; it does not trigger replay evaluations, ingest telemetry, or access provider credentials.
+## Shared UI quality principles
 
-The app defaults to same-origin API paths so the final deployment can serve its static assets from the existing Harness service without introducing a separate API service or requiring cross-origin access. Keep the current HTML dashboard available as a rollback path until the React build is served by the Harness and verified with live smoke tests. `VITE_API_BASE_URL` is optional and should only be set when the API explicitly permits the frontend origin.
+The shared UI package owns cross-product interaction quality as well as visual primitives. Keep product-specific information architecture, density and accent colors in each app, while applying these foundation-wide rules:
 
-Run its data-contract tests with `npm run test:evaluation-harness`, and its local UI with `npm run dev:evaluation-harness`. The Vite development/preview server proxies the read-only API paths to the current Harness origin; override this with `VITE_HARNESS_PROXY_TARGET` when testing against another Harness instance.
+- Use the shared spacing, surface, border, typography and motion tokens before adding one-off values.
+- Keep movement purposeful and brief. Preserve the reduced-motion preference in every workspace, including standalone dashboards.
+- Make all interactive states visible: hover for pointer users, focus-visible for keyboard users, pressed/selected for stateful controls, and disabled for unavailable actions.
+- Maintain usable touch targets, flexible header/action rows and overflow-safe layouts at narrow viewport widths.
+- Preserve readable contrast and borders in forced-colors/high-contrast environments.
+- Treat the shared shell as a mechanical and accessibility contract, not a mandate to make every product look identical.
+
+The Evaluation Harness uses the same interaction and accessibility baseline while retaining its own cyan/violet assurance-dashboard identity.
