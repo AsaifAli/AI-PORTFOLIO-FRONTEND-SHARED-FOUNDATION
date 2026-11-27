@@ -28,3 +28,24 @@ test("Engineering Assurance provides its own light palette instead of forcing da
   assert.match(css, /:root\[data-theme=["']light["']\]/);
   assert.doesNotMatch(css, /:root\s*\{[^}]*color-scheme:\s*dark[^}]*\}\s*$/s);
 });
+
+test("shared workspace styles follow system colour scheme unless an explicit theme is chosen", async () => {
+  const css = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
+  assert.match(css, /color-scheme:\s*light\s+dark/);
+  assert.match(css, /:root\[data-theme=["']light["']\]/);
+  assert.match(css, /prefers-reduced-motion:\s*reduce/);
+});
+
+test("product theme scopes retain distinct accents after shared polish", async () => {
+  const css = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
+  for (const selector of [".app-evidenceflow", ".app-quotesense", ".app-flowpilot", ".evaluation-app"]) {
+    assert.ok(css.includes(selector), `Missing visual identity scope: ${selector}`);
+  }
+});
+
+test("Engineering Assurance follows the system palette and keeps motion accessible", async () => {
+  const css = await readFile(resolve(root, "apps", "evaluation-harness", "src", "styles.css"), "utf8");
+  assert.match(css, /color-scheme:\s*light\s+dark/);
+  assert.match(css, /:root\[data-theme=["']light["']\]/);
+  assert.match(css, /prefers-reduced-motion:\s*reduce/);
+});
