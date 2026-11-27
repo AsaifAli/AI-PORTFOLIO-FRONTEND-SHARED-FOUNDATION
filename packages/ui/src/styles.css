@@ -154,8 +154,8 @@ input.control, textarea.control, select.control { min-height: 40px; }
 }
 
 .evaluation-app {
-  --accent: var(--cyan);
-  --accent-strong: var(--violet);
+  --accent: #78d5ee;
+  --accent-strong: #b6a0ff;
   --accent-rgb: 120,213,238;
   --accent-secondary: var(--violet);
   --accent-border: rgba(120,213,238,.28);
@@ -361,4 +361,16 @@ input.control, textarea.control, select.control { min-height: 40px; }
   .app .run-row.active {
     border: 1px solid CanvasText;
   }
+}
+
+
+/* Safe defaults for the brief session-check shell before a product theme mounts. */
+:root {
+  --accent-rgb: 154,168,255;
+  --accent-secondary: #74d7c2;
+  --accent-border: rgba(154,168,255,.28);
+  --accent-soft: rgba(154,168,255,.075);
+  --primary-gradient: linear-gradient(118deg,#cbd2ff 0%,#98a6ff 57%,#74d7c2 100%);
+  --primary-hover-gradient: linear-gradient(118deg,#e0e4ff 0%,#acb8ff 57%,#91e4d4 100%);
+  --focus-ring: 0 0 0 3px rgba(154,168,255,.2);
 }
