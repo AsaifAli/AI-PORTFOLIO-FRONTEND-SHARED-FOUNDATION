@@ -4,7 +4,7 @@ Shared React + TypeScript + Vite foundation for the active AI Engineering Studio
 
 ## Active workspace applications
 
-- **EvidenceFlow** — research workstation for evidence-grounded RAG, streaming research, source inspection and document libraries.
+- **EvidenceFlow** — API-only document research and evidence service. It has no standalone React/Streamlit product interface; the Studio consumes its authenticated API and safe task-progress events.
 - **QuoteSense** — procurement analytics for multi-quotation analysis, deterministic scoring, risk review and exports.
 - **FlowPilot** — workflow operations for run creation, execution tracking, approvals and run history.
 - **Engineering Assurance** — read-only quality replay and aggregate application activity for EvidenceFlow, QuoteSense and FlowPilot.
@@ -19,7 +19,7 @@ This repository owns frontend mechanics, not product backends. Each active app k
 - Reusable visual primitives and design tokens (`packages/ui`).
 - Common workflow and status primitives (`packages/workflow`).
 
-The Studio website pins this repository as `vendor/shared-frontend`, builds the active workspaces, and serves their static assets from the existing Cloudflare Worker under `/shared-frontend/<app>/`. This does not create another Render service or replace any application backend.
+The Studio website pins this repository as `vendor/shared-frontend`, builds QuoteSense, FlowPilot and Engineering Assurance, and serves those static assets from the existing Cloudflare Worker under `/shared-frontend/<app>/`. EvidenceFlow is consumed only through its same-origin API proxy; no EvidenceFlow frontend assets are bundled.
 
 ## BYOK and session security
 
@@ -35,7 +35,7 @@ The legacy `portfolio_llm_session` bearer query parameter is rejected. Frontend 
 
 ## Backend and deployment boundary
 
-- EvidenceFlow keeps its independent FastAPI/LangGraph backend.
+- EvidenceFlow keeps its independent FastAPI/LangGraph backend and publishes OpenAPI plus live, client-safe task lifecycle events.
 - QuoteSense keeps its independent FastAPI analysis API and its Streamlit fallback.
 - FlowPilot keeps its independent FastAPI workflow API/worker and its Streamlit fallback.
 - Engineering Assurance remains a separate read-only dashboard/API.
@@ -47,19 +47,18 @@ In production, the Studio Worker proxies only explicitly allowlisted routes to f
 
 The shared React workspaces are built and bundled, but the Studio-wide rollout flag remains **off by default**. Do not enable it until authenticated browser QA has passed for client sign-in, BYOK handoff, product API behavior, sign-out/revocation and the complete critical workflow in each active app.
 
-Keep the existing product UIs available as rollback paths until each shared React workspace is proven against its live backend. Do not remove or change backend services as part of frontend rollout.
+Keep the existing QuoteSense and FlowPilot product UIs available as rollback paths until each shared React workspace is proven against its live backend. EvidenceFlow is intentionally API-only. Do not remove or change backend services as part of frontend rollout.
 
 ## Local development
 
 ```bash
 npm ci
-npm run dev:evidenceflow
+npm run dev:quotesense
 ```
 
 The other active applications have corresponding scripts:
 
 ```bash
-npm run dev:quotesense
 npm run dev:flowpilot
 npm run dev:evaluation-harness
 ```
@@ -75,11 +74,11 @@ npm run test:workspace
 npm run build:workspace
 ```
 
-The shared build uses npm workspaces and the repository's pinned npm toolchain. The Studio build script runs workspace tests and builds the four active workspaces before copying their `dist` folders into the Worker static assets.
+The shared build uses npm workspaces and the repository's pinned npm toolchain. The Studio build script runs workspace tests and builds the three shared frontend workspaces before copying their `dist` folders into the Worker static assets. EvidenceFlow remains a backend API and is not part of the frontend build.
 
 ## Product adaptation rule
 
-Share mechanics and primitives, not every screen. EvidenceFlow should feel like a research workstation, QuoteSense like a procurement decision cockpit, and FlowPilot like an operations console. Keep their typography, density, color accents, domain workflows and information architecture distinct while maintaining consistent navigation, session behavior, API error semantics and accessible interaction patterns.
+Share mechanics and primitives, not every screen. EvidenceFlow deliberately has no standalone product UI; its API and live task events are consumed by the Studio protected client workspace. QuoteSense should feel like a procurement decision cockpit, and FlowPilot like an operations console. Keep their typography, density, color accents, domain workflows and information architecture distinct while maintaining consistent navigation, session behavior, API error semantics and accessible interaction patterns.
 
 ## Shared UI quality principles
 

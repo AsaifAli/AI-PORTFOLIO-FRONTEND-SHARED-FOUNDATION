@@ -5,9 +5,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const activeWorkspaces = ["evidenceflow", "quotesense", "flowpilot", "evaluation-harness"];
+const activeWorkspaces = ["quotesense", "flowpilot", "evaluation-harness"];
 const themeScopes = {
-  evidenceflow: ".app-evidenceflow",
   quotesense: ".app-quotesense",
   flowpilot: ".app-flowpilot",
   "evaluation-harness": ".evaluation-app",

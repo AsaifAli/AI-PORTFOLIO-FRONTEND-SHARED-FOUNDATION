@@ -108,21 +108,6 @@ input.control, textarea.control, select.control { min-height: 40px; }
 
 
 /* Product identity tokens: shared mechanics, distinct workspaces. */
-.app-evidenceflow {
-  --accent: #aeb9ff;
-  --accent-strong: #8998ff;
-  --accent-rgb: 174,185,255;
-  --accent-secondary: #75d8c5;
-  --accent-border: rgba(174,185,255,.3);
-  --accent-soft: rgba(174,185,255,.085);
-  --primary-gradient: linear-gradient(118deg,#cbd2ff 0%,#98a6ff 57%,#75d8c5 100%);
-  --primary-hover-gradient: linear-gradient(118deg,#e0e4ff 0%,#acb8ff 57%,#91e4d4 100%);
-  --focus-ring: 0 0 0 3px rgba(174,185,255,.22);
-  background:
-    radial-gradient(900px 460px at 84% -7%,rgba(122,140,255,.105),transparent 68%),
-    radial-gradient(700px 360px at 3% 35%,rgba(91,188,176,.055),transparent 70%);
-}
-
 .app-quotesense {
   --accent: #e8c28c;
   --accent-strong: #d6a663;
