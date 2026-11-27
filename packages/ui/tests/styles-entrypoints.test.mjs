@@ -40,6 +40,6 @@ for (const workspace of activeWorkspaces) {
 
 test("shared primary controls preserve a comfortable touch target", async () => {
   const stylesheet = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
-  assert.match(stylesheet, /\.btn\\s*\\{[^}]*min-height:\\s*40px/s);
-  assert.match(stylesheet, /\.chat-delete\\s*\\{[^}]*min-width:\\s*32px/s);
+  assert.match(stylesheet, /\\.btn\\s*\\{[^}]*min-height:\\s*40px/s);
+  assert.match(stylesheet, /\\.chat-delete\\s*\\{[^}]*min-width:\\s*32px/s);
 });
