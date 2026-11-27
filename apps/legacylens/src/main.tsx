@@ -1,10 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { bootstrapSession } from "@portfolio/session";
 import { StatusChip, Panel } from "@portfolio/ui";
 import "./styles.css";
-
-bootstrapSession();
 
 function App() {
   return <div className="app" data-product="legacylens">
