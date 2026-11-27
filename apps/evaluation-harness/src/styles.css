@@ -531,3 +531,45 @@ button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation
 :root[data-theme="light"] .evaluation-app .brand-mark {
   color: #263b4c;
 }
+
+
+/* Premium Assurance finish. Cyan/violet remain the unmistakable product accents. */
+:root {
+  color-scheme: light dark;
+  --evaluation-motion: cubic-bezier(.2,.75,.25,1);
+}
+html { color-scheme: light dark; }
+body {
+  background:
+    radial-gradient(ellipse 58rem 34rem at 8% -12%, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 68%),
+    radial-gradient(ellipse 54rem 32rem at 100% -12%, color-mix(in srgb, var(--violet) 9%, transparent), transparent 68%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.evaluation-app .topbar {
+  border-bottom-color: color-mix(in srgb, var(--cyan) 18%, var(--line));
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--text) 7%, transparent);
+}
+.evaluation-app .kpi,
+.evaluation-app .application-card,
+.evaluation-app .privacy-panel {
+  border-radius: 19px !important;
+  box-shadow: 0 15px 38px color-mix(in srgb, var(--text) 8%, transparent) !important;
+  transition: transform 240ms var(--evaluation-motion), border-color 200ms ease, box-shadow 240ms ease !important;
+}
+.evaluation-app .application-card:hover,
+.evaluation-app .kpi:hover {
+  transform: translateY(-3px);
+}
+.evaluation-app .application-card.evidenceflow { --card-accent: var(--cyan); }
+.evaluation-app .application-card.quotesense { --card-accent: var(--violet); }
+.evaluation-app .application-card.flowpilot { --card-accent: var(--green); }
+.evaluation-app .application-card {
+  border-top-color: var(--card-accent, var(--cyan)) !important;
+}
+.evaluation-app .hero h1 { letter-spacing: -.06em; text-wrap: balance; }
+@media (prefers-reduced-motion: reduce) {
+  .evaluation-app .application-card:hover,
+  .evaluation-app .kpi:hover { transform: none; }
+}
