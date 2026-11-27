@@ -1,11 +1,18 @@
-# Frontend adaptation matrix
+# Active frontend adaptation matrix
 
-| App | Primary UX | Backend integration | Distinctive surface |
-|---|---|---|---|
-| EvidenceFlow | Research/chat | LangGraph-RAG API | evidence registry, citations, streaming |
-| QuoteSense | Analytics workspace | quotation API | supplier comparison, scoring, risk |
-| WebQA | QA control room | crawler API | crawl tree, browser health, regression |
-| FlowPilot | Operations console | automation API | runs, approvals, schedules |
-| LegacyLens | Developer workbench | modernization API | migration stages, graph, diff, release gate |
+| App | Primary UX | Backend integration | Distinctive surface | Rollout state |
+|---|---|---|---|---|
+| EvidenceFlow | Research workstation | LangGraph-RAG FastAPI API | streamed research, evidence registry, citations, document library | Shared React build and Studio same-origin proxy are present; validate end-to-end before enabling rollout |
+| QuoteSense | Procurement analytics | quotation-analyzer FastAPI API | supplier comparison, deterministic scoring, risk and validation review | Shared React workspace and allowlisted Studio proxy are present; validate analysis/upload against live API |
+| FlowPilot | Workflow operations console | AI Automation Command Center FastAPI API/worker | workflow selection, queued runs, lifecycle controls and approvals | Shared React workspace and allowlisted Studio proxy are present; validate run and approval lifecycle |
+| Engineering Assurance | Read-only quality dashboard | ai-engineering-evaluation-harness API | replay quality and aggregate activity | Shared React workspace is read-only; includes EvidenceFlow, QuoteSense and FlowPilot |
 
-Shared mechanics live in `packages/`. Product-specific mechanics must stay in each `apps/<project>/` adapter.
+## Shared package ownership
+
+- `packages/session`: single-use Gateway handoff parsing, URL scrubbing, same-origin exchange/status/revocation and non-sensitive session metadata.
+- `packages/api-client`: cookie-based API requests, consistent headers and structured HTTP failures.
+- `packages/types`: common transport contracts.
+- `packages/ui`: reusable presentation primitives and visual tokens.
+- `packages/workflow`: shared workflow/status primitives.
+
+Product-specific behavior remains in `apps/<product>/`. The Studio server owns the fixed upstream origins and the route allowlists; browser code never chooses a backend host or receives a reusable Gateway bearer token.
