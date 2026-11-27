@@ -153,3 +153,282 @@ button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation
     animation: none !important;
   }
 }
+
+
+/* Engineering Assurance finish: clearer hierarchy, quieter glass surfaces,
+   and deliberate project colour without turning every surface into a glow. */
+.evaluation-app .topbar {
+  min-height: 72px;
+  padding-inline: clamp(18px, 4vw, 64px);
+  border-bottom-color: rgba(120, 213, 238, .16);
+}
+
+.evaluation-app .shell {
+  padding-top: clamp(26px, 3.8vw, 52px);
+  padding-bottom: clamp(36px, 4.8vw, 64px);
+}
+
+.evaluation-app .hero {
+  align-items: center;
+  gap: clamp(24px, 4vw, 54px);
+  padding: 8px 0 30px;
+}
+
+.evaluation-app .hero h1 {
+  max-width: 900px;
+  font-size: clamp(38px, 4.6vw, 60px);
+  letter-spacing: -.058em;
+  text-wrap: balance;
+}
+
+.evaluation-app .hero p {
+  max-width: 790px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.evaluation-app .hero-note {
+  flex: 0 0 270px;
+  max-width: 290px;
+  padding: 17px 18px;
+  border-color: rgba(109, 224, 161, .2);
+  background:
+    radial-gradient(circle at 100% 0, rgba(109, 224, 161, .08), transparent 62%),
+    linear-gradient(145deg, rgba(20, 37, 45, .72), rgba(13, 22, 32, .85));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 18px 48px rgba(0,0,0,.12);
+}
+
+.evaluation-app .kpis {
+  gap: 14px;
+  margin: 4px 0 34px;
+}
+
+.evaluation-app .kpi {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 112px;
+  padding: 18px 19px;
+  overflow: hidden;
+  border-radius: 16px;
+  border-color: rgba(148, 167, 194, .15);
+  background:
+    radial-gradient(circle at 100% 0, rgba(120, 213, 238, .075), transparent 48%),
+    linear-gradient(150deg, rgba(20, 34, 52, .96), rgba(11, 19, 31, .97));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 12px 32px rgba(0,0,0,.1);
+}
+
+.evaluation-app .kpi:nth-child(2) {
+  background:
+    radial-gradient(circle at 100% 0, rgba(182, 160, 255, .075), transparent 48%),
+    linear-gradient(150deg, rgba(20, 34, 52, .96), rgba(11, 19, 31, .97));
+}
+
+.evaluation-app .kpi:nth-child(3) {
+  background:
+    radial-gradient(circle at 100% 0, rgba(109, 224, 161, .065), transparent 48%),
+    linear-gradient(150deg, rgba(20, 34, 52, .96), rgba(11, 19, 31, .97));
+}
+
+.evaluation-app .kpi strong {
+  position: relative;
+  font-size: clamp(25px, 2.3vw, 32px);
+  letter-spacing: -.055em;
+}
+
+.evaluation-app .section-heading {
+  margin: 34px 0 15px;
+  align-items: center;
+}
+
+.evaluation-app .section-heading h2 {
+  font-size: 21px;
+  letter-spacing: -.045em;
+}
+
+.evaluation-app .section-heading small {
+  max-width: 420px;
+  text-align: right;
+  line-height: 1.55;
+}
+
+.evaluation-app .application-grid {
+  gap: 16px;
+}
+
+.evaluation-app .application-card {
+  position: relative;
+  isolation: isolate;
+  min-height: 342px;
+  padding: 21px !important;
+  overflow: hidden;
+  border-radius: 17px !important;
+  border-color: rgba(148, 167, 194, .16) !important;
+  background:
+    linear-gradient(155deg, rgba(19, 32, 49, .98), rgba(10, 18, 29, .99)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 15px 36px rgba(0,0,0,.12) !important;
+  transition:
+    transform 200ms cubic-bezier(.2,.75,.25,1),
+    border-color 200ms ease,
+    box-shadow 200ms ease !important;
+}
+
+.evaluation-app .application-card::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto auto;
+  width: 210px;
+  height: 170px;
+  content: "";
+  pointer-events: none;
+  background: radial-gradient(ellipse at top right, var(--project-glow), transparent 72%);
+  opacity: .9;
+}
+
+.evaluation-app .application-card.evidenceflow { --project-glow: rgba(120,213,238,.13); }
+.evaluation-app .application-card.quotesense { --project-glow: rgba(182,160,255,.13); }
+.evaluation-app .application-card.flowpilot { --project-glow: rgba(109,224,161,.12); }
+
+.evaluation-app .application-card.evidenceflow {
+  border-top: 2px solid var(--cyan) !important;
+}
+.evaluation-app .application-card.quotesense {
+  border-top: 2px solid var(--violet) !important;
+}
+.evaluation-app .application-card.flowpilot {
+  border-top: 2px solid var(--green) !important;
+}
+
+.evaluation-app .application-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(120, 213, 238, .28) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 22px 48px rgba(0,0,0,.22) !important;
+}
+
+.evaluation-app .application-head {
+  min-height: 88px;
+}
+
+.evaluation-app .application-head h2 {
+  font-size: 20px;
+  letter-spacing: -.04em;
+}
+
+.evaluation-app .application-head p {
+  max-width: 350px;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.evaluation-app .application-score-row {
+  margin-top: 13px;
+  padding: 15px 0 14px;
+  border-bottom-color: rgba(148, 167, 194, .14);
+}
+
+.evaluation-app .score-block strong {
+  font-size: 32px;
+}
+
+.evaluation-app .metric-grid {
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.evaluation-app .metric-tile {
+  padding: 10px 11px;
+  border-radius: 11px;
+  border-color: rgba(148, 167, 194, .12);
+  background: linear-gradient(145deg, rgba(7,14,24,.52), rgba(12,20,32,.4));
+}
+
+.evaluation-app .metric-tile span {
+  line-height: 1.4;
+}
+
+.evaluation-app .activity-strip {
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.evaluation-app .activity-strip > div {
+  border-top-color: rgba(148, 167, 194, .15);
+}
+
+.evaluation-app .activity-strip strong {
+  font-size: 16px;
+}
+
+.evaluation-app .application-foot {
+  padding-top: 13px;
+  border-top: 1px solid rgba(148, 167, 194, .1);
+}
+
+.evaluation-app .privacy-panel {
+  margin-top: 28px;
+  padding: 20px 22px;
+  border-color: rgba(120, 213, 238, .17);
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 0 0, rgba(120,213,238,.065), transparent 52%),
+    linear-gradient(120deg, rgba(17,31,45,.84), rgba(12,20,32,.72));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.evaluation-app .footer {
+  margin-top: 28px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(148, 167, 194, .12);
+}
+
+@media (max-width: 1180px) {
+  .evaluation-app .hero-note {
+    flex-basis: 245px;
+  }
+}
+
+@media (max-width: 900px) {
+  .evaluation-app .hero-note {
+    flex: 1 1 auto;
+  }
+
+  .evaluation-app .section-heading small {
+    text-align: left;
+  }
+
+  .evaluation-app .application-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .evaluation-app .topbar {
+    padding-inline: 18px;
+  }
+
+  .evaluation-app .hero {
+    padding-bottom: 22px;
+  }
+
+  .evaluation-app .kpis {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .evaluation-app .kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .evaluation-app .application-card {
+    padding: 17px !important;
+  }
+
+  .evaluation-app .section-heading {
+    align-items: flex-start;
+  }
+
+  .evaluation-app .section-heading small {
+    max-width: none;
+  }
+}
