@@ -5,6 +5,7 @@ import { bootstrapSession, revokeSession, type SessionMetadata } from "@portfoli
 import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, Panel, StatusChip } from "@portfolio/ui";
 import "@portfolio/ui/styles.css";
 import { initializeSharedAppTheme } from "@portfolio/ui/theme";
+import { buildRunCanvasSteps, type RunEvent } from "./run-canvas-model";
 import "./styles.css";
 
 initializeSharedAppTheme();
@@ -109,6 +110,60 @@ function OutputPreview({ run }: { run: RunRecord }) {
   return <pre className="json-output">{JSON.stringify(output, null, 2)}</pre>;
 }
 
+function RunCanvas({ run, events, loading, unavailable }: {
+  run: RunRecord;
+  events: RunEvent[];
+  loading: boolean;
+  unavailable: boolean;
+}) {
+  const steps = useMemo(() => buildRunCanvasSteps(events), [events]);
+  const waitingForReview = run.status === "awaiting_approval";
+  const failed = run.status === "failed" || steps.some((step) => step.state === "failed");
+  const active = isActive(run.status);
+  const workerStarted = events.some((event) => event.event === "started");
+  const waitingForWorker = run.status === "queued" && !workerStarted;
+  const stateLabel = waitingForReview ? "Ready for review" : failed ? "Needs attention" : active ? "In progress" : run.status.replace(/_/g, " ");
+  const emptyTraceTitle = loading ? "Loading execution trace"
+    : unavailable ? "Execution trace unavailable"
+      : waitingForWorker ? "Waiting for the worker"
+        : active && workerStarted ? "Worker started"
+          : failed ? "Run failed before a stage trace was recorded"
+            : "Detailed trace not captured";
+  const emptyTraceDetail = loading ? "Checking the run's recorded stage events."
+    : unavailable ? "The run status is still available, but stage events could not be retrieved."
+      : waitingForWorker ? "This run is queued. Its first recorded execution stage will appear here when a worker claims it."
+        : active && workerStarted ? "The worker has started this run. The canvas will fill as the LangGraph stages emit their actual events."
+          : failed ? "The worker did not record a detailed stage boundary before the failure."
+            : "This run predates step-level instrumentation. New runs capture the actual workflow stages here.";
+
+  return <section className="run-canvas" aria-label="Live run canvas">
+    <div className="run-canvas-heading">
+      <div><span className="eyebrow">LIVE RUN CANVAS</span><strong>Observed execution</strong></div>
+      <StatusChip label={stateLabel} tone={waitingForReview ? "warn" : failed ? "bad" : active ? "good" : "neutral"}/>
+    </div>
+    {steps.length ? <ol className="run-canvas-steps" aria-live="polite">
+      {steps.map((step) => <li className={`run-canvas-step ${step.state}`} key={step.id}>
+        <span className="run-canvas-marker" aria-hidden="true">{step.state === "completed" ? "✓" : step.state === "failed" ? "!" : <span/>}</span>
+        <div className="run-canvas-step-copy">
+          <div className="run-canvas-step-top"><strong>{step.label}</strong><span>{step.state === "completed" ? "Complete" : step.state === "failed" ? "Failed" : "In progress"}</span></div>
+          {step.summary ? <p>{step.summary}</p> : null}
+          <div className="run-canvas-step-meta">
+            {step.durationMs !== undefined ? <span>{step.durationMs.toLocaleString("en-IN")} ms</span> : null}
+            {step.startedAt ? <span>Started {formatTime(step.startedAt)}</span> : null}
+            {step.finishedAt ? <span>Finished {formatTime(step.finishedAt)}</span> : null}
+          </div>
+        </div>
+      </li>)}
+    </ol> : <div className="run-canvas-empty">
+      <span className="run-canvas-empty-mark" aria-hidden="true">◎</span>
+      <div><strong>{emptyTraceTitle}</strong><p>{emptyTraceDetail}</p></div>
+    </div>}
+    {waitingForReview ? <div className="run-canvas-review"><span className="run-canvas-review-mark" aria-hidden="true">Ⅱ</span><div><strong>Human review checkpoint</strong><p>The workflow has staged its proposal for review. Approval records a decision only; it does not send or publish anything.</p></div></div> : null}
+    {run.status === "completed" || run.status === "completed_with_warnings" ? <div className="run-canvas-result"><span aria-hidden="true">✓</span> Workflow execution recorded as {run.status.replace(/_/g, " ")}.</div> : null}
+    <div className="run-canvas-footnote">Stage timing and status are sourced from the FlowPilot worker event log. No simulated progress is shown.</div>
+  </section>;
+}
+
 function App() {
   const [session, setSession] = useState<SessionView>({ active: false });
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -117,6 +172,9 @@ function App() {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRecord[]>([]);
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
+  const [runEvents, setRunEvents] = useState<RunEvent[]>([]);
+  const [runEventsLoading, setRunEventsLoading] = useState(false);
+  const [runEventsUnavailable, setRunEventsUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -154,6 +212,40 @@ function App() {
     })();
     return () => { alive = false; };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!session.active || !selectedRun?.run_id) {
+      setRunEvents([]);
+      setRunEventsUnavailable(false);
+      return;
+    }
+    let alive = true;
+    setRunEvents([]);
+    setRunEventsUnavailable(false);
+    const loadEvents = async () => {
+      setRunEventsLoading(true);
+      try {
+        const result = await api.get<{ events?: RunEvent[] }>(
+          `/api/v1/runs/${encodeURIComponent(selectedRun.run_id)}/events?limit=100`
+        );
+        if (!alive) return;
+        setRunEvents(Array.isArray(result.events) ? result.events : []);
+        setRunEventsUnavailable(false);
+      } catch {
+        if (!alive) return;
+        setRunEvents([]);
+        setRunEventsUnavailable(true);
+      } finally {
+        if (alive) setRunEventsLoading(false);
+      }
+    };
+    void loadEvents();
+    const timer = isActive(selectedRun.status) ? window.setInterval(() => void loadEvents(), 4000) : undefined;
+    return () => {
+      alive = false;
+      if (timer !== undefined) window.clearInterval(timer);
+    };
+  }, [session.active, selectedRun?.run_id, selectedRun?.status]);
 
   const hasActiveRun = useMemo(() => runs.some((run) => isActive(run.status)), [runs]);
   useEffect(() => {
@@ -205,7 +297,7 @@ function App() {
   }
 
   async function endSession() {
-    try { await revokeSession("/api/workspace/apps/flowpilot/session/revoke"); setSession({ active: false }); setRuns([]); setApprovals([]); setSelectedRun(null); }
+    try { await revokeSession("/api/workspace/apps/flowpilot/session/revoke"); setSession({ active: false }); setRuns([]); setApprovals([]); setSelectedRun(null); setRunEvents([]); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not end the session."); }
   }
 
@@ -214,7 +306,7 @@ function App() {
   return <div className="app app-flowpilot">
     <AppHeader monogram="F" name="FlowPilot" descriptor="workflow operations · control plane" sessionLabel={session.active ? `${session.provider || "Provider"} · ${session.model || "Connected"}` : "Session required"} status={session.active ? "good" : "warn"} actions={<><StatusChip label={apiHealthy ? "API online" : "API offline"} tone={apiHealthy ? "good" : "warn"}/>{session.active ? <Button variant="quiet" onClick={() => void endSession()}>End session</Button> : null}</>}/>
     <main className="shell">
-      <PageHeader eyebrow="Orchestration / human-in-the-loop" title="Keep work moving. Keep decisions human." description="Launch asynchronous workflows, track their state and review every proposed external-impact action before it can proceed." actions={<StatusChip label="Execution stays queued" tone="good"/>}/>
+      <PageHeader eyebrow="Orchestration / human-in-the-loop" title="Keep work moving. Keep decisions human." description="Launch asynchronous workflows, track their state and review every proposed external-impact action before it can proceed." actions={<StatusChip label="Asynchronous execution" tone="good"/>}/>
       {!session.active ? <Notice tone="warning">{session.error || "Open FlowPilot from your authenticated Studio workspace to establish a secure project session."}</Notice> : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
       {notice ? <Notice tone="success">{notice}</Notice> : null}
@@ -228,9 +320,8 @@ function App() {
           <WorkflowForm key={workflow} workflow={workflow} onSubmit={(payload) => void startRun(payload)} busy={busy}/>
         </Panel>
         <div className="stack">
-          <Panel title="Execution lifecycle" detail="Observed state from the FlowPilot API."><div className="lifecycle"><div className="lifecycle-step"><span className="lifecycle-index">01</span><div><strong>Submit</strong><small>Validate typed inputs and queue a run.</small></div><StatusChip label="Ready" tone="good"/></div><div className="lifecycle-step"><span className="lifecycle-index">02</span><div><strong>Execute</strong><small>Existing orchestrator and worker run the selected graph.</small></div><StatusChip label={hasActiveRun ? "Active" : "On demand"} tone={hasActiveRun ? "good" : "neutral"}/></div><div className="lifecycle-step"><span className="lifecycle-index">03</span><div><strong>Review</strong><small>Content and outreach checkpoints remain approval-gated.</small></div><StatusChip label={approvals.length ? `${approvals.length} pending` : "Human gate"} tone={approvals.length ? "warn" : "neutral"}/></div></div></Panel>
           <Panel title="Selected run" detail={selectedRun ? `Reference ${selectedRun.run_id}` : "Choose a run to inspect its output and evidence."}>
-            {selectedRun ? <><div className="selected-run-head"><StatusChip label={selectedRun.status.replace(/_/g, " ")} tone={selectedRun.status === "failed" ? "bad" : isActive(selectedRun.status) || selectedRun.status === "awaiting_approval" ? "warn" : "good"}/><span>{WORKFLOW_INFO[selectedRun.workflow as WorkflowName]?.title || selectedRun.workflow}</span></div><div className="run-meta"><div><small>Started</small><strong>{formatTime(selectedRun.created_at)}</strong></div><div><small>Duration</small><strong>{selectedRun.duration_ms === undefined ? "In progress" : `${selectedRun.duration_ms} ms`}</strong></div><div><small>Usage</small><strong>{textValue(selectedRun.usage?.total_tokens, "Not recorded")} tokens</strong></div></div><OutputPreview run={selectedRun}/>{selectedRun.evidence?.length ? <div className="evidence-list">{selectedRun.evidence.slice(0, 4).map((item, index) => <div className="source-card" key={index}><strong>{textValue(item.title, "Execution evidence")}</strong><p>{textValue(item.detail)}</p></div>)}</div> : null}<div className="run-controls">{selectedRun.status === "running" || selectedRun.status === "queued" ? <><Button onClick={() => void controlRun(selectedRun, "pause")}>Pause</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}{selectedRun.status === "paused" ? <><Button variant="primary" onClick={() => void controlRun(selectedRun, "resume")}>Resume</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}</div></> : <EmptyState title="No run selected" body="Queue a workflow or select a run in the run history to inspect the result."/>}
+            {selectedRun ? <><div className="selected-run-head"><StatusChip label={selectedRun.status.replace(/_/g, " ")} tone={selectedRun.status === "failed" ? "bad" : isActive(selectedRun.status) || selectedRun.status === "awaiting_approval" ? "warn" : "good"}/><span>{WORKFLOW_INFO[selectedRun.workflow as WorkflowName]?.title || selectedRun.workflow}</span></div><div className="run-meta"><div><small>Started</small><strong>{formatTime(selectedRun.created_at)}</strong></div><div><small>Duration</small><strong>{selectedRun.duration_ms === undefined ? "In progress" : `${selectedRun.duration_ms} ms`}</strong></div><div><small>Usage</small><strong>{textValue(selectedRun.usage?.total_tokens, "Not recorded")} tokens</strong></div></div><RunCanvas run={selectedRun} events={runEvents} loading={runEventsLoading} unavailable={runEventsUnavailable}/><OutputPreview run={selectedRun}/>{selectedRun.evidence?.length ? <div className="evidence-list">{selectedRun.evidence.slice(0, 4).map((item, index) => <div className="source-card" key={index}><strong>{textValue(item.title, "Execution evidence")}</strong><p>{textValue(item.detail)}</p></div>)}</div> : null}<div className="run-controls">{selectedRun.status === "running" || selectedRun.status === "queued" ? <><Button onClick={() => void controlRun(selectedRun, "pause")}>Pause</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}{selectedRun.status === "paused" ? <><Button variant="primary" onClick={() => void controlRun(selectedRun, "resume")}>Resume</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}</div></> : <EmptyState title="No run selected" body="Queue a workflow or select a run in the run history to inspect the result."/>}
           </Panel>
         </div>
       </div>
