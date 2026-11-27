@@ -18,7 +18,7 @@ for (const app of apps) {
 test("shared product tokens provide a readable light palette", async () => {
   const css = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
   assert.match(css, /:root\[data-theme=["']light["']\]/);
-  assert.match(css, /color-scheme:\s*light/);
+  assert.match(css, /color-scheme:\s*light\s+dark/);
   assert.match(css, /--surface:\s*#fff/i);
   assert.match(css, /--text:\s*#[0-9a-f]{6}/i);
 });
