@@ -1,46 +1,79 @@
 # Studio project-session contract
 
-This contract applies to the active model-backed React workspaces: EvidenceFlow, QuoteSense and FlowPilot. The Evaluation Harness is read-only and does not require a BYOK session. The Studio owns provider selection and raw provider-key custody. Product backends remain independent and must continue enforcing their own project and owner authorization.
+This contract describes the deployed Studio proxy flow for QuoteSense and FlowPilot. EvidenceFlow retains its own same-origin FastAPI session implementation. The Evaluation Harness is read-only and does not require a BYOK session.
+
+## Trust and credential boundaries
+
+- The authenticated Studio workspace owns provider selection and the BYOK entry point.
+- A provider key is entered into the Studio form and sent only to the Studio's same-origin server route. The Studio sends it server-to-server to the Portfolio LLM Gateway. Product APIs never receive provider keys.
+- The Gateway stores the provider credential encrypted in its own session store.
+- The Studio creates a short-lived, single-use, project-scoped `portfolio_llm_handoff` code. This code is not a reusable Gateway JWT.
+- The workspace identity is derived from a verified Supabase Auth user UUID (or a still-valid legacy access-key record ID during migration). The Studio signs that ID with a short-lived HMAC assertion for Gateway session creation. The Gateway derives the stable owner scope from that signed identity.
 
 ## Launch and exchange
 
-1. The authenticated Studio workspace forwards the client's provider key to the Portfolio LLM Gateway over a server-to-server request. Provider keys never reach a product backend or browser storage.
-2. The Studio creates a short-lived, single-use `portfolio_llm_handoff` code scoped to the selected project. The app launch URL contains this code, never a reusable Gateway JWT.
-3. The React app validates the handoff parameter and removes it from the URL before any network request, telemetry, redirect, or rendering. The code is exchanged using a same-origin POST with `credentials: include`.
-4. The Studio server consumes the code with the Gateway for the exact project, validates project, portfolio scope, expiry and owner scope, and stores the Gateway token in an encrypted, TTL-bound server-side record.
-5. The browser receives only an opaque session cookie and safe metadata (`active`, `project`, `provider`, `model`, `expires_at`). The raw Gateway token and owner scope are never returned to browser JavaScript.
+1. The Studio launches the app at its same-origin workspace route with exactly one `portfolio_llm_handoff` query parameter.
+2. The React app validates the code and immediately removes it from the visible URL before making a network request, telemetry call, redirect, or rendering product content.
+3. It sends `POST /api/workspace/apps/<project>/session/exchange` with `{ "code": "..." }`, `credentials: include`, and `cache: no-store`.
+4. The Studio server validates the authenticated workspace client, consumes the code with the Gateway using the exact project slug, and validates the Gateway response:
+   - a well-formed Gateway access token;
+   - `target_project` exactly matching the app;
+   - an integer expiry between 1 and 3600 seconds;
+   - a valid 64-character hexadecimal owner scope.
+5. The Studio sets the Gateway access token itself in a per-app, path-scoped HttpOnly cookie. The exchange response body contains only safe metadata: `active`, `project`, `provider`, `model`, and `expires_at`. It does not return the token or owner scope to JavaScript.
 
-EvidenceFlow currently provides an equivalent same-origin FastAPI exchange/status/revoke API. QuoteSense and FlowPilot use the authenticated Studio boundary so the project token remains inside the Worker/server-side proxy.
+The deployed implementation does **not** create a second opaque browser session ID or a separate Studio-side token table for these two apps. The Gateway JWT is the cookie value, and server-side code is the only application code that reads it.
 
-## App session endpoints
+## Cookie behavior
 
-| Method | Path | Required behavior |
+Each app receives a separate cookie name derived from the app slug and the verified workspace identity ID. Cookies use:
+
+- `HttpOnly` so application JavaScript cannot read the Gateway JWT;
+- `Secure` in production;
+- `SameSite=Lax`;
+- a narrow `Path=/api/workspace/apps/<project>` scope;
+- a `Max-Age` no longer than the Gateway session expiry, capped at 3600 seconds.
+
+The browser automatically attaches the cookie to same-origin requests under that path. React receives only safe provider/model/session metadata. It does not copy the JWT into localStorage, sessionStorage, IndexedDB, application state, or request headers.
+
+## Session endpoints
+
+| Method | Path | Deployed behavior |
 |---|---|---|
-| `POST` | `/api/workspace/apps/<project>/session/exchange` | Consume one-time code, store server-side session, set opaque HttpOnly cookie, return safe metadata |
-| `GET` | `/api/workspace/apps/<project>/session` | Verify the cookie and backing record, recheck project Gateway session, return safe metadata |
-| `POST` | `/api/workspace/apps/<project>/session/revoke` | Revoke app session, clear cookie and report the result |
+| `POST` | `/api/workspace/apps/<project>/session/exchange` | Consume the one-time code, validate the project-bound Gateway response, set the HttpOnly Gateway-token cookie, return safe metadata |
+| `GET` | `/api/workspace/apps/<project>/session` | Read the cookie server-side, call Gateway session status, verify app project, portfolio session project, owner scope and expiry, return safe metadata |
+| `POST` | `/api/workspace/apps/<project>/session/revoke` | Enforce same-origin request, revoke the Gateway session, then clear the app cookie after revocation is confirmed |
 
-EvidenceFlow may use its same-origin `/api/v1/session/exchange`, `/api/v1/session`, and `/api/v1/session/revoke` endpoints.
+Session exchange and revocation reject cross-origin requests. Session-bearing responses use `Cache-Control: private, no-store`.
 
-Cookies must be Secure in production, HttpOnly, SameSite=Lax, scoped to the narrowest compatible app/API path, and expire no later than the Gateway session. Use a high-entropy opaque identifier and store only its digest as the lookup key. Encrypt stored Gateway credentials with an application-specific secret. Session status and revocation must be server-side.
+## Product API request flow
 
-## Product API requests
+- React sends same-origin API requests with `credentials: include` and `cache: no-store`.
+- Browser code never reads or attaches the Gateway JWT. The shared API client strips caller-supplied `Authorization`, `X-LLM-Gateway-Token`, and `Proxy-Authorization` headers.
+- The Studio route handler resolves the exact app and path from a closed allowlist, reads that app's HttpOnly cookie server-side, then injects `X-LLM-Gateway-Token` on the server-to-server request only when that route requires BYOK.
+- The Studio does not forward the browser's Cookie or Authorization headers to product services.
+- Product APIs validate the Gateway project token and owner scope before performing owner-scoped operations. QuoteSense requires the token for quotation analysis; FlowPilot requires it for all exposed workflow/run/approval operations.
+- The Evaluation Harness proxy is GET-only. It exposes only health, quality and aggregate application-summary endpoints. It does not expose evaluation replay triggers or event ingestion to client browsers.
 
-- Browser requests are same-origin, use `credentials: include` and `cache: no-store`.
-- Browser code must never send `Authorization: Bearer <Gateway JWT>` or `X-LLM-Gateway-Token`. The shared API client strips these headers even if a component attempts to add them.
-- The Studio proxy resolves the opaque app session, then injects the short-lived project Gateway token server-to-server only for allowlisted requests. Product APIs validate project, portfolio scope, expiry and owner scope before performing operations.
-- Owner scope is derived from verified Gateway claims, never from a browser-supplied tenant header/body field. Cross-client access and cross-project tokens are rejected.
-- Credential/session lifetime must not outlive the Gateway expiry. Redis/store failure, Gateway verification outage, wrong-project handoff, invalid owner scope, or expired/revoked credentials fail closed.
+## Fixed proxy boundary
 
-## Browser and URL rules
+The Studio routes are a closed application proxy, not a general URL forwarder. Upstream origins are resolved from server-only Worker configuration and constrained to approved HTTPS hostnames. Each project has an explicit route/method allowlist, bounded request/response handling, redirect rejection and safe response headers. Client-supplied host, port, arbitrary path or tenant-owner scope cannot override the server configuration.
 
-- Accept only one `portfolio_llm_handoff` parameter. Reject empty, malformed or duplicate values. Strip it from the visible URL before making a fetch.
-- Strip and reject the legacy reusable `portfolio_llm_session` query parameter. It is not a supported credential source.
-- Never put provider keys, Gateway JWTs, opaque app-session IDs or cookies in localStorage, sessionStorage, IndexedDB, browser logs, analytics or error reports.
-- Shared API client base URLs and request paths must be same-origin paths. API calls must not be redirected to a client-controlled external host.
+The current allowlists expose:
+- QuoteSense: health reads and `POST /api/v1/analyses`;
+- FlowPilot: workflow/approval reads, run list/create/read, and explicit pause/resume/stop/approval actions;
+- Engineering Assurance: GET-only health, quality and aggregate application summary.
 
-## Server-side proxy boundary
+## URL and browser-storage rules
 
-The Studio routes are a closed application proxy, not a general URL forwarder. Resolve upstream origins from server-only configuration; require HTTPS and explicit hostname allowlists; reject user-controlled host, port and path overrides; apply project-specific path and method allowlists; bound request and response sizes; and do not forward browser Authorization, cookie or internal headers upstream. The Evaluation Harness proxy is GET-only and must not expose replay triggers or telemetry ingestion to the client dashboard.
+- Accept exactly one valid `portfolio_llm_handoff` parameter; reject empty, malformed or duplicate values.
+- Strip the handoff parameter before any fetch, telemetry, redirect or UI render.
+- Strip and reject the legacy reusable `portfolio_llm_session` query parameter.
+- Never store provider keys or Gateway JWTs in localStorage, sessionStorage, IndexedDB, browser logs, analytics or error reports.
+- Shared API client base URLs and request paths must be same-origin paths. They cannot be redirected to an external host from component code.
 
-Responses carrying session information use `Cache-Control: no-store`. Logs must not contain provider keys, handoff codes, Gateway JWTs, app cookies, prompts, uploaded documents, or model output. Use `400` for malformed handoffs, `401` for missing/expired/replayed/revoked sessions, `403` for project/owner mismatches, `413` for oversized requests, `429` for rate limits, and `503` for unavailable Gateway/session storage.
+## Failure behavior
+
+Missing, expired, replayed, revoked or invalid project sessions fail closed. Wrong-project handoffs and owner-scope mismatches are rejected. Gateway/session-store failure returns a non-success response; the proxy never downgrades a failed authenticated request to anonymous access. Redirects from Gateway or product upstreams are rejected. Oversized requests and rate-limited requests are bounded and surfaced without leaking upstream credentials.
+
+Logs must not contain provider keys, handoff codes, Gateway JWTs, app cookies, prompts, uploaded documents, or model output.
