@@ -5,6 +5,7 @@ import { bootstrapSession, revokeSession, type SessionMetadata } from "@portfoli
 import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, Panel, SectionLabel, StatusChip } from "@portfolio/ui";
 import { getAnalysisView, scoreNumber, toSupplierCsv, validateQuoteUploads, type QuoteAnalysis } from "./data";
 import "@portfolio/ui/styles.css";
+import "./styles.css";
 
 type SessionView = SessionMetadata & { error?: string };
 const api = createApiClient("/api/workspace/apps/quotesense");
