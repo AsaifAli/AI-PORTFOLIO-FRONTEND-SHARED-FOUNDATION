@@ -4,19 +4,20 @@
   "version": "0.1.0",
   "packageManager": "npm@12.0.2",
   "workspaces": [
-    "apps/*",
+    "apps/evidenceflow",
+    "apps/quotesense",
+    "apps/flowpilot",
+    "apps/evaluation-harness",
     "packages/*"
   ],
   "scripts": {
     "dev:evidenceflow": "npm --workspace apps/evidenceflow run dev",
     "dev:quotesense": "npm --workspace apps/quotesense run dev",
-    "dev:webqa": "npm --workspace apps/webqa run dev",
     "dev:flowpilot": "npm --workspace apps/flowpilot run dev",
-    "dev:legacylens": "npm --workspace apps/legacylens run dev",
     "lint": "eslint .",
     "build": "npm run build:apps",
-    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/webqa run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build && npm --workspace apps/legacylens run build",
-    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/webqa run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/evaluation-harness run typecheck && npm --workspace apps/legacylens run typecheck",
+    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
+    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/evaluation-harness run typecheck",
     "dev:evaluation-harness": "npm --workspace apps/evaluation-harness run dev",
     "test:evaluation-harness": "node --test apps/evaluation-harness/tests/*.test.mjs",
     "build:workspace": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
@@ -37,5 +38,6 @@
     "@eslint/js": "^9.29.0",
     "typescript-eslint": "^8.35.0",
     "globals": "^16.2.0"
-  }
+  },
+  "type": "module"
 }
