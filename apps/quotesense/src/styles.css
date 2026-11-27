@@ -1,1 +1,315 @@
 .quotesense-grid{grid-template-columns:minmax(0,1.25fr) minmax(300px,.85fr)}.quote-drop{display:grid;justify-items:center;gap:6px;margin-bottom:17px}.quote-drop strong{font-size:12px;color:#dce4ee}.quote-drop small{font-size:9px;color:var(--faint)}.quote-drop input{margin-top:3px}.file-drop-icon{width:32px;height:32px;border:1px solid rgba(154,168,255,.3);border-radius:10px;display:grid;place-items:center;font-size:22px;color:var(--accent)}.selected-files{margin:-6px 0 16px}.criteria-field{margin-top:15px}.analysis-submit{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}.analysis-submit small{font-size:9px;color:var(--faint);max-width:250px;line-height:1.45}.dark-spinner{border-color:rgba(16,23,37,.2);border-top-color:#101725}.principle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.principle-grid>div{padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.018);display:grid;gap:6px}.principle-grid span{font:700 10px Manrope,sans-serif;color:var(--accent)}.principle-grid strong{font-size:11px}.principle-grid small{font-size:9px;color:var(--muted);line-height:1.5}.decision-summary{margin-top:14px}.leader-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border:1px solid rgba(121,213,167,.18);border-radius:12px;background:rgba(121,213,167,.04)}.leader-card>div{display:grid;gap:4px}.leader-card>div strong{font:650 14px Manrope,sans-serif}.leader-card small{font-size:9px;color:var(--muted)}.leader-score{color:var(--green);font:750 18px Manrope,sans-serif;white-space:nowrap}.recommendation-card{display:grid;gap:7px;margin-top:10px;border:1px solid var(--border);border-radius:12px;padding:13px;background:rgba(255,255,255,.018)}.recommendation-card .eyebrow{font-size:9px}.recommendation-card>strong{font:650 13px Manrope,sans-serif}.recommendation-card p{font-size:10px;margin:0;line-height:1.55}.score-breakdown{display:grid;gap:9px}.score-line{display:grid;grid-template-columns:88px minmax(0,1fr) 28px;align-items:center;gap:10px}.score-line span{font-size:10px;color:var(--muted)}.score-line strong{text-align:right;font-size:10px}.risk-list{display:grid;gap:8px}.risk-item{padding:11px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.018);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px}.risk-item>div{display:grid;gap:3px}.risk-item>div strong{font-size:10px}.risk-item small{font-size:9px;color:var(--faint)}.risk-item p{grid-column:1/-1;font-size:10px;margin:2px 0 0}.analysis-result-section{margin-top:22px}.quote-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:15px}.quote-record{padding:14px;border:1px solid var(--border);border-radius:13px;background:rgba(255,255,255,.018);min-width:0}.quote-record-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.quote-record h3{font:650 14px Manrope,sans-serif;margin:6px 0 0}.quote-attributes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:13px 0}.quote-attributes>div{display:grid;gap:3px;min-width:0}.quote-attributes span{font-size:9px;text-transform:uppercase;color:var(--faint);letter-spacing:.07em}.quote-attributes strong{font-size:10px;overflow-wrap:anywhere}.quote-record>p{font-size:10px;margin:0;line-height:1.55}.validation-list{display:grid;gap:9px;margin-top:14px}.validation-item{padding:12px;border:1px solid var(--border);border-radius:11px;display:grid;grid-template-columns:1fr auto;gap:5px}.validation-item>div{display:grid;gap:3px}.validation-item strong{font-size:11px}.validation-item small{font-size:9px;color:var(--faint)}.validation-item p{grid-column:1/-1;font-size:10px;margin:3px 0 0}.export-row{margin-top:18px;padding-top:13px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}.export-row>span{font-size:9px;color:var(--faint)}.product-footnote{margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:9px;color:var(--faint)}.table-muted{color:var(--faint)}@media(max-width:960px){.quotesense-grid{grid-template-columns:1fr}}@media(max-width:600px){.principle-grid{grid-template-columns:1fr}.quote-detail-grid{grid-template-columns:1fr}.export-row{align-items:flex-start;flex-direction:column}.quote-attributes{grid-template-columns:1fr 1fr}}
+
+
+/* QuoteSense decision journey — restrained procurement UI, not a simulated
+   agent console. Every stage is driven by an API event or labelled sample. */
+.quote-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.processing-journey {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(620px 210px at 0 0, rgba(120, 213, 238, .055), transparent 64%),
+    var(--surface);
+  border-color: rgba(154, 168, 255, .18);
+}
+
+.processing-journey::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(154,168,255,.5), rgba(121,213,167,.28), transparent);
+  pointer-events: none;
+}
+
+.journey-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 2px 0 0;
+}
+
+.journey-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  min-width: 0;
+  min-height: 116px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255,255,255,.025), rgba(255,255,255,.008));
+  transition: border-color .2s ease, background .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.journey-step:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.journey-step-marker {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--faint);
+  background: rgba(255,255,255,.025);
+  font: 700 9px Manrope, sans-serif;
+  letter-spacing: .01em;
+}
+
+.journey-step-content {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.journey-step-head {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.journey-step-head strong {
+  color: var(--text);
+  font: 650 10px Manrope, sans-serif;
+  line-height: 1.35;
+}
+
+.journey-step-head small {
+  color: var(--faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.journey-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.journey-step-metrics {
+  color: var(--faint);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.journey-step.journey-completed {
+  border-color: rgba(121,213,167,.23);
+  background:
+    linear-gradient(145deg, rgba(121,213,167,.065), rgba(255,255,255,.012));
+}
+
+.journey-completed .journey-step-marker {
+  color: var(--green);
+  border-color: rgba(121,213,167,.34);
+  background: rgba(121,213,167,.08);
+}
+
+.journey-step.journey-started {
+  border-color: rgba(154,168,255,.48);
+  background:
+    radial-gradient(210px 100px at 0 0, rgba(154,168,255,.10), transparent 72%),
+    var(--surface);
+  box-shadow: 0 8px 24px rgba(67,82,155,.08);
+}
+
+.journey-started .journey-step-marker {
+  color: var(--accent);
+  border-color: rgba(154,168,255,.46);
+  background: rgba(154,168,255,.12);
+  animation: journey-breathe 1.8s ease-in-out infinite;
+}
+
+.journey-step.journey-failed {
+  border-color: rgba(240,141,145,.38);
+  background: rgba(240,141,145,.045);
+}
+
+.journey-failed .journey-step-marker {
+  color: var(--red);
+  border-color: rgba(240,141,145,.32);
+}
+
+.journey-step.journey-example {
+  border-style: dashed;
+  border-color: rgba(154,168,255,.28);
+  background: linear-gradient(145deg, rgba(154,168,255,.055), rgba(255,255,255,.008));
+}
+
+.journey-example .journey-step-marker {
+  color: var(--accent);
+  border-color: rgba(154,168,255,.26);
+}
+
+.journey-footnote {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--faint);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.score-weight-breakdown {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.score-weight-breakdown > span {
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.score-weight-breakdown > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.score-weight-breakdown small {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgba(255,255,255,.018);
+  font-size: 8px;
+}
+
+.score-weight-breakdown small strong {
+  margin-left: 3px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.risk-item {
+  grid-template-columns: minmax(0,1fr);
+  gap: 8px;
+}
+
+.risk-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.risk-item-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.risk-findings {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.risk-findings li {
+  position: relative;
+  padding-left: 13px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.risk-findings li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .48em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+@keyframes journey-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(154,168,255,0); }
+  50% { box-shadow: 0 0 0 4px rgba(154,168,255,.10); }
+}
+
+:root[data-theme="light"] .processing-journey {
+  background:
+    radial-gradient(620px 210px at 0 0, rgba(89,107,208,.045), transparent 64%),
+    #fff;
+  border-color: rgba(89,107,208,.16);
+}
+
+:root[data-theme="light"] .journey-step {
+  background: linear-gradient(145deg, #fff, #f7f9fc);
+}
+
+:root[data-theme="light"] .journey-step.journey-completed {
+  border-color: rgba(39,121,79,.2);
+  background: linear-gradient(145deg, rgba(39,121,79,.045), #fff);
+}
+
+:root[data-theme="light"] .journey-step.journey-started {
+  border-color: rgba(89,107,208,.4);
+  background: radial-gradient(210px 100px at 0 0, rgba(89,107,208,.06), #fff 72%);
+  box-shadow: 0 8px 24px rgba(67,82,155,.07);
+}
+
+:root[data-theme="light"] .journey-step.journey-example {
+  border-color: rgba(89,107,208,.25);
+  background: linear-gradient(145deg, rgba(89,107,208,.035), #fff);
+}
+
+:root[data-theme="light"] .score-weight-breakdown small {
+  background: #f7f9fc;
+}
+
+@media (max-width: 1100px) {
+  .journey-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .quote-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .journey-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .journey-step {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-step,
+  .journey-step-marker {
+    animation: none !important;
+    transition: none !important;
+  }
+}
