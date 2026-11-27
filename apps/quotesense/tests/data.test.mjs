@@ -42,3 +42,29 @@ test("enforces the QuoteSense upload contract before making a request", () => {
   ]) || "", /100 MB/i);
   assert.match(validateQuoteUploads(Array.from({ length: 6 }, (_, index) => ({ name: `q${index}.pdf`, size: 100 }))) || "", /no more than 5/i);
 });
+
+
+test("processing stage selection uses the latest real event for each stage", async () => {
+  const { latestStageEvent, QUOTESENSE_PROCESSING_STAGES } = await import("../src/data.ts");
+  const events = [
+    { stage: "extract", status: "started", message: "Reading first quotation." },
+    { stage: "extract", status: "completed", message: "First quotation extracted." },
+    { stage: "extract", status: "started", message: "Reading second quotation." },
+  ];
+  assert.equal(latestStageEvent(events, "extract")?.status, "started");
+  assert.equal(latestStageEvent(events, "extract")?.message, "Reading second quotation.");
+  assert.equal(latestStageEvent(events, "recommendation"), null);
+  assert.equal(QUOTESENSE_PROCESSING_STAGES.length, 8);
+});
+
+test("sample walkthrough is explicitly synthetic and keeps deterministic ranking separate from recommendation", async () => {
+  const { createSampleQuoteAnalysis, createSampleProcessingTrace, getAnalysisView } = await import("../src/data.ts");
+  const sample = createSampleQuoteAnalysis();
+  const view = getAnalysisView(sample);
+  assert.equal(sample.demo_mode, true);
+  assert.equal(view.deterministicSupplier, "Aster Office Systems");
+  assert.equal(view.qualitativeSupplier, "Mango Industrial Supply");
+  assert.equal(view.recommendationDiffers, true);
+  assert.equal(view.weights.cost, 0.4);
+  assert.equal(createSampleProcessingTrace().length, 8);
+});
