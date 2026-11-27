@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Panel, StatusChip } from "@portfolio/ui";
 import { loadDashboardSnapshot, type DashboardSnapshot } from "./api";
+import "@portfolio/ui/styles.css";
 import "./styles.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE_URL = "/api/workspace/apps/evaluation-harness";
 const REFRESH_MS = 30_000;
 
 const metricLabels: Record<string, string> = {

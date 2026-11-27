@@ -1,50 +1,52 @@
-import { getSessionToken } from "@portfolio/session";
+export type ApiClientOptions = {
+  fetcher?: typeof fetch;
+};
 
-export function createApiClient(baseUrl: string) {
+export function createApiClient(baseUrl: string, options: ApiClientOptions = {}) {
   const base = baseUrl.replace(/\/$/, "");
+  const fetcher = options.fetcher ?? fetch;
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = getSessionToken();
     const headers = new Headers(init.headers);
-    headers.set("Accept", "application/json");
+    if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
-    if (init.body && !headers.has("Content-Type")) {
+    const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+    if (init.body !== undefined && !isFormData && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
 
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-
-    const response = await fetch(`${base}${path}`, { ...init, headers });
+    const response = await fetcher(`${base}${path}`, {
+      ...init,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       let message = `Request failed (${response.status})`;
-
       try {
-        const body = await response.json();
-        message = body?.detail ?? body?.message ?? message;
+        const body = await response.json() as { detail?: unknown; error?: unknown; message?: unknown };
+        const candidate = body?.detail ?? body?.error ?? body?.message;
+        if (typeof candidate === "string" && candidate.trim()) message = candidate;
       } catch {
-        // Ignore non-JSON error bodies and retain the status-based message.
+        // Keep the status message for non-JSON error responses.
       }
-
-      throw new Error(message);
+      throw Object.assign(new Error(message), { status: response.status });
     }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
+    if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;
   }
 
   return {
-    get: <T>(path: string) => request<T>(path),
-    post: <T>(path: string, body: unknown) =>
+    get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
+    post: <T>(path: string, body: unknown, signal?: AbortSignal) =>
       request<T>(path, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: body instanceof FormData ? body : JSON.stringify(body),
+        signal,
       }),
+    delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
     request,
   };
 }
