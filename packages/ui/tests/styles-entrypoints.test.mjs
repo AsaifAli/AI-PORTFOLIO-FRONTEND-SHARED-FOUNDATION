@@ -32,7 +32,7 @@ for (const workspace of activeWorkspaces) {
     const selector = themeScopes[workspace].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rule = stylesheet.match(new RegExp(`${selector}\\s*\\{([^}]*)\\}`));
     assert.ok(rule, `Missing theme scope for ${workspace}`);
-    assert.match(rule[1], /--accent:\\s*#[0-9a-f]{6}/i);
+    assert.match(rule[1], /--accent:\s*#[0-9a-f]{6}/i);
     assert.match(rule[1], /--primary-gradient:/);
     assert.match(rule[1], /--focus-ring:/);
   });
@@ -41,7 +41,7 @@ for (const workspace of activeWorkspaces) {
 test("shared primary controls preserve a comfortable touch target", async () => {
   const stylesheet = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
   const buttonRules = [...stylesheet.matchAll(/\\.btn\\s*\\{([^}]*)\\}/g)];
-  assert.ok(buttonRules.some(([, declarations]) => /min-height:\\s*40px/.test(declarations)));
+  assert.ok(buttonRules.some(([, declarations]) => /min-height:\s*40px/.test(declarations)));
   const deleteRules = [...stylesheet.matchAll(/\\.chat-delete\\s*\\{([^}]*)\\}/g)];
-  assert.ok(deleteRules.some(([, declarations]) => /min-width:\\s*32px/.test(declarations)));
+  assert.ok(deleteRules.some(([, declarations]) => /min-width:\s*32px/.test(declarations)));
 });
