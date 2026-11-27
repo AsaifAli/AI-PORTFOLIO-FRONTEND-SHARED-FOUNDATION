@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { Panel, StatusChip } from "@portfolio/ui";
 import { loadDashboardSnapshot, type DashboardSnapshot } from "./api";
 import "@portfolio/ui/styles.css";
+import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
+
+initializeSharedAppTheme();
 
 const API_BASE_URL = "/api/workspace/apps/evaluation-harness";
 const REFRESH_MS = 30_000;

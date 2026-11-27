@@ -5,7 +5,10 @@
   "main": "src/index.tsx",
   "exports": {
     ".": "./src/index.tsx",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./theme": "./src/theme.ts"
   },
-  "peerDependencies": { "react": "^19.1.1" }
+  "peerDependencies": {
+    "react": "^19.1.1"
+  }
 }

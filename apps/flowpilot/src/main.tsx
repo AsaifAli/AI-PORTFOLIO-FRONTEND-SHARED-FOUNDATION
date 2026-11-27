@@ -4,7 +4,10 @@ import { createApiClient } from "@portfolio/api-client";
 import { bootstrapSession, revokeSession, type SessionMetadata } from "@portfolio/session";
 import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, Panel, StatusChip } from "@portfolio/ui";
 import "@portfolio/ui/styles.css";
+import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
+
+initializeSharedAppTheme();
 
 type JsonRecord = Record<string, unknown>;
 type RunRecord = {
