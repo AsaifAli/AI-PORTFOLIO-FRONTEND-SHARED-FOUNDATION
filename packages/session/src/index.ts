@@ -24,16 +24,18 @@ export function parseHandoffLocation(
   hash = "",
 ): HandoffLocation {
   const params = new URLSearchParams(search);
-  const rawCode = params.get(HANDOFF_PARAM) ?? "";
+  const handoffValues = params.getAll(HANDOFF_PARAM);
+  const hasHandoff = handoffValues.length > 0;
+  const rawCode = handoffValues[0] ?? "";
   const legacyLink = params.has(LEGACY_PARAM);
-  const changed = params.has(HANDOFF_PARAM) || legacyLink;
+  const changed = hasHandoff || legacyLink;
   params.delete(HANDOFF_PARAM);
   params.delete(LEGACY_PARAM);
   const query = params.toString();
   return {
-    code: CODE_PATTERN.test(rawCode) && !legacyLink ? rawCode : "",
+    code: handoffValues.length === 1 && CODE_PATTERN.test(rawCode) && !legacyLink ? rawCode : "",
     legacyLink,
-    invalidCode: Boolean(rawCode) && !CODE_PATTERN.test(rawCode),
+    invalidCode: hasHandoff && (handoffValues.length !== 1 || !CODE_PATTERN.test(rawCode)),
     changed,
     cleanUrl: `${pathname}${query ? `?${query}` : ""}${hash}`,
   };

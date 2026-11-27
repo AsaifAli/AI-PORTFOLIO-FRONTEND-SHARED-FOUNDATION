@@ -2,12 +2,45 @@ export type ApiClientOptions = {
   fetcher?: typeof fetch;
 };
 
+function hasUnsafePathCharacters(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (character === "\\" || code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+}
+
 export function createApiClient(baseUrl: string, options: ApiClientOptions = {}) {
+  if (
+    typeof baseUrl !== "string" ||
+    !baseUrl.startsWith("/") ||
+    baseUrl.startsWith("//") ||
+    hasUnsafePathCharacters(baseUrl) ||
+    baseUrl.includes("?") ||
+    baseUrl.includes("#")
+  ) {
+    throw new TypeError("API base URL must be a same-origin path.");
+  }
   const base = baseUrl.replace(/\/$/, "");
   const fetcher = options.fetcher ?? fetch;
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    if (
+      typeof path !== "string" ||
+      !path.startsWith("/") ||
+      path.startsWith("//") ||
+      hasUnsafePathCharacters(path)
+    ) {
+      throw new TypeError("API request path must be a same-origin path.");
+    }
+
     const headers = new Headers(init.headers);
+    // Product components must not bypass the Studio BFF and send reusable
+    // Gateway credentials from browser JavaScript. The Studio proxy resolves
+    // the opaque HttpOnly session and injects upstream credentials server-side.
+    headers.delete("Authorization");
+    headers.delete("X-LLM-Gateway-Token");
+    headers.delete("Proxy-Authorization");
     if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
     const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
