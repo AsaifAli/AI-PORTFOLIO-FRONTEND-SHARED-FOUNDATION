@@ -266,13 +266,71 @@ function App() {
           <aside className="chat-sidebar">
             <div className="chat-sidebar-head"><strong>Conversations</strong><Button variant="quiet" onClick={() => void createChat()} disabled={!session.active || busy}>＋ New</Button></div>
             {chats.length ? <div className="chat-list">{chats.map((chat) => <div className={`chat-list-row ${activeChat?.thread_id === chat.thread_id ? "active" : ""}`} key={chat.thread_id}><button className={`chat-item ${activeChat?.thread_id === chat.thread_id ? "active" : ""}`} type="button" onClick={() => void openChat(chat.thread_id)}><span>{chat.title || "New conversation"}</span><small>{chat.message_count}</small></button><button className="chat-delete" title="Delete conversation" onClick={() => void deleteChat(chat.thread_id)}>×</button></div>)}</div> : <p className="subtle">Your research history will appear here.</p>}
-            <div className="divider"/>
-            <div className="chat-sidebar-head"><strong>Knowledge library</strong><button className="text-action" onClick={() => setShowLibrary((value) => !value)}>{showLibrary ? "Hide" : "Show"}</button></div>
-            {showLibrary ? <>
-              <Field label="Document scope"><select className="control" value={uploadScope} onChange={(event) => setUploadScope(event.target.value as "global" | "chat")}><option value="global">Workspace library</option><option value="chat">This conversation</option></select></Field>
-              <label className="file-drop document-drop"><span className="file-drop-title">{uploading ? "Indexing document…" : "Add a source document"}</span><small>PDF · DOCX · TXT · XLSX</small><input type="file" accept=".pdf,.docx,.txt,.xlsx" disabled={!session.active || uploading} onChange={(event) => { void uploadDocument(event.target.files?.[0]); event.currentTarget.value = ""; }}/></label>
-              <div className="library-list">{documents.length ? documents.map((document) => <div className="file-row" key={document.document_id}><div className="file-meta"><span className="file-name">{document.name}</span><small>{document.chunk_count ?? 0} passages · {document.scope === "global" ? "Workspace" : "Conversation"}</small></div><button className="text-action danger-text" onClick={() => void removeDocument(document)} title={`Remove ${document.name}`}>Remove</button></div>) : <p className="subtle">No documents indexed yet.</p>}</div>
-            </> : null}
+            <section className="knowledge-library" aria-label="Knowledge library">
+              <div className="knowledge-library-head">
+                <div className="knowledge-library-title">
+                  <strong>Knowledge library</strong>
+                  <small>{documents.length} {documents.length === 1 ? "source" : "sources"} indexed</small>
+                </div>
+                <button
+                  className="text-action"
+                  type="button"
+                  aria-expanded={showLibrary}
+                  aria-controls="evidenceflow-library-content"
+                  onClick={() => setShowLibrary((value) => !value)}
+                >
+                  {showLibrary ? "Hide" : "Manage"}
+                </button>
+              </div>
+              {showLibrary ? (
+                <div className="knowledge-library-content" id="evidenceflow-library-content">
+                  <Field label="Document scope">
+                    <select className="control" value={uploadScope} onChange={(event) => setUploadScope(event.target.value as "global" | "chat")}>
+                      <option value="global">Workspace library</option>
+                      <option value="chat">This conversation</option>
+                    </select>
+                  </Field>
+                  <label className="file-drop document-drop">
+                    <span className="document-drop-icon" aria-hidden="true">↥</span>
+                    <span className="file-drop-title">{uploading ? "Indexing document…" : "Add a source document"}</span>
+                    <small>PDF · DOCX · TXT · XLSX</small>
+                    <input
+                      className="document-drop-input"
+                      type="file"
+                      accept=".pdf,.docx,.txt,.xlsx"
+                      disabled={!session.active || uploading}
+                      aria-label="Add a source document"
+                      onChange={(event) => { void uploadDocument(event.target.files?.[0]); event.currentTarget.value = ""; }}
+                    />
+                  </label>
+                  <div className="library-list" aria-label="Indexed source documents">
+                    {documents.length ? documents.map((document) => (
+                      <article className="library-document" key={document.document_id}>
+                        <span className="library-document-icon" aria-hidden="true">▤</span>
+                        <div className="file-meta">
+                          <strong className="file-name" title={document.name}>{document.name}</strong>
+                          <small>{document.chunk_count ?? 0} passages · {document.scope === "global" ? "Workspace" : "Conversation"}</small>
+                        </div>
+                        <button
+                          className="library-document-remove"
+                          type="button"
+                          onClick={() => void removeDocument(document)}
+                          aria-label={`Remove ${document.name}`}
+                          title={`Remove ${document.name}`}
+                        >
+                          Remove
+                        </button>
+                      </article>
+                    )) : (
+                      <div className="library-empty">
+                        <strong>No indexed sources yet</strong>
+                        <small>Add a document to ground research in your own material.</small>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </section>
           </aside>
 
           <section className="chat-main">
