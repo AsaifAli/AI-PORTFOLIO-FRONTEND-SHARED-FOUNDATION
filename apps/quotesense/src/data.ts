@@ -96,8 +96,8 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
     })),
     validation: [
       { supplier: "Aster Office Systems", completeness_score: 100, missing_fields: [] },
-      { supplier: "Mango Industrial Supply", completeness_score: 100, missing_fields: [] },
-      { supplier: "Northstar Workplace", completeness_score: 77.8, missing_fields: ["project_description", "contact_info"] },
+      { supplier: "Mango Industrial Supply", completeness_score: 77.8, missing_fields: ["project_description", "contact_info"] },
+      { supplier: "Northstar Workplace", completeness_score: 100, missing_fields: [] },
     ],
     scores: [
       { supplier: "Aster Office Systems", score: 89.4, cost_score: 53.8, completeness_score: 100, timeline_score: 88.3, terms_score: 90, risk_score: 100, currency: "INR", total_cost: 1_240_000, cost_comparable: true },
