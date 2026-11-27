@@ -74,7 +74,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
     },
     {
       supplier: "Northstar Workplace",
-      total_cost: 1_390_000,
+      total_cost: 1_890_000,
       currency: "INR",
       project_description: "Workplace equipment supply",
       key_features: ["Standard delivery"],
@@ -97,7 +97,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
     validation: [
       { supplier: "Aster Office Systems", completeness_score: 100, missing_fields: [] },
       { supplier: "Mango Industrial Supply", completeness_score: 100, missing_fields: [] },
-      { supplier: "Northstar Workplace", completeness_score: 80, missing_fields: ["warranty"] },
+      { supplier: "Northstar Workplace", completeness_score: 77.8, missing_fields: ["project_description", "contact_info"] },
     ],
     scores: [
       { supplier: "Aster Office Systems", score: 89.4, cost_score: 53.8, completeness_score: 100, timeline_score: 88.3, terms_score: 90, risk_score: 100, currency: "INR", total_cost: 1_240_000, cost_comparable: true },
@@ -109,7 +109,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       { supplier: "Northstar Workplace", level: "high", items: ["Full upfront payment is stated.", "Warranty information is missing."] },
     ],
     price_anomalies: [
-      { supplier: "Northstar Workplace", total_cost: 1_390_000, median_cost: 1_240_000, deviation_percent: 12.1, direction: "high" },
+      { supplier: "Northstar Workplace", total_cost: 1_390_000, median_cost: 1_240_000, deviation_percent: 52.4, direction: "high" },
     ],
     recommendation: {
       recommendations: {
@@ -171,9 +171,13 @@ export function getAnalysisView(result: QuoteAnalysis) {
   const deterministicLeader = scores[0] ?? null;
   const primary = ((result.recommendation as QuoteRecord | undefined)?.recommendations as QuoteRecord | undefined)?.primary_recommendation as QuoteRecord | undefined;
   const rawWeights = result.weights;
-  const weights = typeof rawWeights === "object" && rawWeights !== null && !Array.isArray(rawWeights)
-    ? Object.fromEntries(Object.entries(rawWeights).map(([key, value]) => [key, scoreNumber(value)]).filter((item): item is [string, number] => item[1] !== null))
-    : {};
+  const weights: Record<string, number> = {};
+  if (typeof rawWeights === "object" && rawWeights !== null && !Array.isArray(rawWeights)) {
+    for (const [key, value] of Object.entries(rawWeights)) {
+      const parsed = scoreNumber(value);
+      if (parsed !== null) weights[key] = parsed;
+    }
+  }
   const completeness = validation.map((row) => scoreNumber(row.completeness_score)).filter((value): value is number => value !== null && value >= 0 && value <= 100);
   const averageCompleteness = completeness.length ? completeness.reduce((sum, value) => sum + value, 0) / completeness.length : null;
   const deterministicSupplier = String(deterministicLeader?.supplier || "").trim();
