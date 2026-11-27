@@ -4,10 +4,10 @@ import test from "node:test";
 import { bootstrapSession, isValidHandoffCode, parseHandoffLocation } from "../src/index.ts";
 
 test("strips a single-use handoff code while preserving unrelated URL state", () => {
-  const parsed = parseHandoffLocation("/workspace/apps/evidenceflow", "?tab=research&portfolio_llm_handoff=Abcdefghijklmnopqrstuvwxyz123456", "#chat");
+  const parsed = parseHandoffLocation("/workspace", "?tab=research&portfolio_llm_handoff=Abcdefghijklmnopqrstuvwxyz123456", "#chat");
   assert.equal(parsed.code, "Abcdefghijklmnopqrstuvwxyz123456");
   assert.equal(parsed.changed, true);
-  assert.equal(parsed.cleanUrl, "/workspace/apps/evidenceflow?tab=research#chat");
+  assert.equal(parsed.cleanUrl, "/workspace?tab=research#chat");
 });
 
 test("rejects legacy reusable tokens and removes them from the URL", () => {

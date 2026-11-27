@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const apps = ["evidenceflow", "quotesense", "flowpilot", "evaluation-harness"];
+const apps = ["quotesense", "flowpilot", "evaluation-harness"];
 
 for (const app of apps) {
   test(`${app} subscribes to the shared workspace theme`, async () => {
@@ -38,7 +38,7 @@ test("shared workspace styles follow system colour scheme unless an explicit the
 
 test("product theme scopes retain distinct accents after shared polish", async () => {
   const css = await readFile(resolve(root, "packages", "ui", "src", "styles.css"), "utf8");
-  for (const selector of [".app-evidenceflow", ".app-quotesense", ".app-flowpilot", ".evaluation-app"]) {
+  for (const selector of [".app-quotesense", ".app-flowpilot", ".evaluation-app"]) {
     assert.ok(css.includes(selector), `Missing visual identity scope: ${selector}`);
   }
 });
