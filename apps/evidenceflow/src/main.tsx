@@ -4,7 +4,10 @@ import { createApiClient } from "@portfolio/api-client";
 import { bootstrapSession, revokeSession, type SessionMetadata } from "@portfolio/session";
 import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, SectionLabel, StatusChip } from "@portfolio/ui";
 import "@portfolio/ui/styles.css";
+import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
+
+initializeSharedAppTheme();
 
 type ChatSummary = { thread_id: string; title: string; updated_at?: string; message_count: number };
 type DocumentRecord = { document_id: string; name: string; chunk_count?: number; scope: "global" | "chat"; created_at?: string; visual_pages_processed?: number; modalities?: string[] };
