@@ -1,4 +1,4 @@
-/* global Response, FormData, Blob, ReadableStream, TextEncoder */
+/* global Response, Headers, FormData, Blob, ReadableStream, TextEncoder */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createApiClient } from "../src/index.ts";
