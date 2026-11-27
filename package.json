@@ -4,29 +4,26 @@
   "version": "0.1.0",
   "packageManager": "npm@12.0.2",
   "workspaces": [
-    "apps/evidenceflow",
     "apps/quotesense",
     "apps/flowpilot",
     "apps/evaluation-harness",
     "packages/*"
   ],
   "scripts": {
-    "dev:evidenceflow": "npm --workspace apps/evidenceflow run dev",
     "dev:quotesense": "npm --workspace apps/quotesense run dev",
     "dev:flowpilot": "npm --workspace apps/flowpilot run dev",
     "lint": "eslint .",
     "build": "npm run build:apps",
-    "build:apps": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
-    "typecheck": "npm --workspace apps/evidenceflow run typecheck && npm --workspace apps/quotesense run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/evaluation-harness run typecheck",
+    "build:apps": "npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
+    "typecheck": "npm --workspace apps/quotesense run typecheck && npm --workspace apps/flowpilot run typecheck && npm --workspace apps/evaluation-harness run typecheck",
     "dev:evaluation-harness": "npm --workspace apps/evaluation-harness run dev",
     "test:evaluation-harness": "node --test apps/evaluation-harness/tests/*.test.mjs",
-    "build:workspace": "npm --workspace apps/evidenceflow run build && npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
+    "build:workspace": "npm --workspace apps/quotesense run build && npm --workspace apps/flowpilot run build && npm --workspace apps/evaluation-harness run build",
     "test:session": "node --experimental-strip-types --test packages/session/tests/*.test.mjs",
     "test:quotesense": "node --experimental-strip-types --test apps/quotesense/tests/*.test.mjs",
-    "test:workspace": "npm run test:session && npm run test:api-client && npm run test:quotesense && npm run test:evidenceflow && npm run test:evaluation-harness && npm run test:ui",
+    "test:workspace": "npm run test:session && npm run test:api-client && npm run test:quotesense && npm run test:evaluation-harness && npm run test:ui",
     "test:api-client": "node --experimental-strip-types --test packages/api-client/tests/*.test.mjs",
-    "test:ui": "node --experimental-strip-types --test packages/ui/tests/*.test.mjs",
-    "test:evidenceflow": "node --test apps/evidenceflow/tests/*.test.mjs"
+    "test:ui": "node --experimental-strip-types --test packages/ui/tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
