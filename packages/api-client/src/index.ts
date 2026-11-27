@@ -134,7 +134,7 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
     const dispatch = (frame: string) => {
       let eventName = "message";
       const dataLines: string[] = [];
-      for (const line of frame.split(/\\r?\\n/)) {
+      for (const line of frame.split(/\r?\n/)) {
         if (!line || line.startsWith(":")) continue;
         const separator = line.indexOf(":");
         const field = separator < 0 ? line : line.slice(0, separator);
@@ -143,7 +143,7 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
         if (field === "data") dataLines.push(value);
       }
       if (!dataLines.length) return;
-      const raw = dataLines.join("\\n");
+      const raw = dataLines.join("\n");
       let data: unknown = raw;
       try { data = JSON.parse(raw); } catch { /* Event data may be plain text. */ }
       const event = { event: eventName, data };
@@ -165,13 +165,13 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        let boundary = buffer.search(/\\r?\\n\\r?\\n/);
+        let boundary = buffer.search(/\r?\n\r?\n/);
         while (boundary >= 0) {
           const frame = buffer.slice(0, boundary);
-          const match = buffer.slice(boundary).match(/^\\r?\\n\\r?\\n/);
+          const match = buffer.slice(boundary).match(/^\r?\n\r?\n/);
           buffer = buffer.slice(boundary + (match?.[0].length ?? 2));
           dispatch(frame);
-          boundary = buffer.search(/\\r?\\n\\r?\\n/);
+          boundary = buffer.search(/\r?\n\r?\n/);
         }
       }
       buffer += decoder.decode();
