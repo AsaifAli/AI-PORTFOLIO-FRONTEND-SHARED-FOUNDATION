@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Workspace tests
+        run: npm run test:workspace
+
       - name: Typecheck
         run: npm run typecheck
 
