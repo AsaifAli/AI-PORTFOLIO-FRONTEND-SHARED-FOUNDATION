@@ -64,12 +64,12 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       supplier: "Mango Industrial Supply",
       total_cost: 1_180_000,
       currency: "INR",
-      project_description: "Workplace equipment and installation",
+      project_description: "",
       key_features: ["Installation included", "Extended service desk"],
       terms_conditions: "40% advance; balance after acceptance. Two-year warranty.",
       validity_period: "45 days",
-      delivery_timeline: "28 days",
-      contact_info: "sample@example.invalid",
+      delivery_timeline: "45 days",
+      contact_info: "",
       warranty: "24 months",
     },
     {
@@ -78,7 +78,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       currency: "INR",
       project_description: "Workplace equipment supply",
       key_features: ["Standard delivery"],
-      terms_conditions: "Full payment upfront. Warranty terms not specified.",
+      terms_conditions: "Full payment upfront. Delivery is non-cancellable.",
       validity_period: "15 days",
       delivery_timeline: "45 days",
       contact_info: "sample@example.invalid",
@@ -115,7 +115,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       recommendations: {
         primary_recommendation: {
           supplier: "Mango Industrial Supply",
-          reason: "The sample recommendation favours the stronger warranty and service coverage, despite Aster Office Systems having the highest deterministic score. Review the trade-off before making a supplier decision.",
+          reason: "The sample recommendation favours the longer warranty and extended service desk, despite Aster Office Systems having the highest deterministic score. Mango also has a longer delivery timeline and two incomplete fields, so review those trade-offs before deciding.",
         },
       },
     },
