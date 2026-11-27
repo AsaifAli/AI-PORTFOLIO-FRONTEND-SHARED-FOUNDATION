@@ -80,3 +80,16 @@ The shared build uses npm workspaces and the repository's pinned npm toolchain. 
 ## Product adaptation rule
 
 Share mechanics and primitives, not every screen. EvidenceFlow should feel like a research workstation, QuoteSense like a procurement decision cockpit, and FlowPilot like an operations console. Keep their typography, density, color accents, domain workflows and information architecture distinct while maintaining consistent navigation, session behavior, API error semantics and accessible interaction patterns.
+
+## Shared UI quality principles
+
+The shared UI package owns cross-product interaction quality as well as visual primitives. Keep product-specific information architecture, density and accent colors in each app, while applying these foundation-wide rules:
+
+- Use the shared spacing, surface, border, typography and motion tokens before adding one-off values.
+- Keep movement purposeful and brief. Preserve the reduced-motion preference in every workspace, including standalone dashboards.
+- Make all interactive states visible: hover for pointer users, focus-visible for keyboard users, pressed/selected for stateful controls, and disabled for unavailable actions.
+- Maintain usable touch targets, flexible header/action rows and overflow-safe layouts at narrow viewport widths.
+- Preserve readable contrast and borders in forced-colors/high-contrast environments.
+- Treat the shared shell as a mechanical and accessibility contract, not a mandate to make every product look identical.
+
+The Evaluation Harness uses the same interaction and accessibility baseline while retaining its own cyan/violet assurance-dashboard identity.
