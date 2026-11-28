@@ -140,3 +140,176 @@ test('parseActivity requires and returns all three project aggregates without ev
   assert.equal(parsed.projects.flowpilot.averageDurationMs, 1234);
   assert.equal('raw_events' in parsed.projects.flowpilot, false);
 });
+
+test('parseRuntimeEvaluations separates allowlisted framework scores from project runtime signals', async () => {
+  const { parseRuntimeEvaluations } = await import('../src/dashboard-data.mjs');
+  const parsed = parseRuntimeEvaluations({
+    results: [
+      {
+        id: 'private-event-id',
+        event_type: 'evaluation.completed',
+        created_at: '2026-11-28T08:00:00Z',
+        project: 'evidenceflow',
+        status: 'success',
+        workflow: 'rag_query',
+        experiment_id: 'rag-experiment-v2',
+        dataset_version: 'docs-v2',
+        prompt_version: 'answer-v4',
+        model_version: 'model-v1',
+        config_version: 'retrieval-v3',
+        model: 'private provider label',
+        metrics: {
+          'external.ragas.faithfulness': 0.94,
+          'external.ragas.context_precision': 0.88,
+          'runtime.citation_coverage': 0.96,
+          'retrieval.chunk_count': 4,
+          'private.metric': 1,
+        },
+      },
+      {
+        event_type: 'evaluation.completed',
+        created_at: '2026-11-28T08:01:00Z',
+        project: 'quotesense',
+        status: 'success',
+        metrics: {
+          'runtime.extraction_completeness': 0.91,
+          'runtime.risk_finding_count': 2,
+          'procurement.quote_count': 3,
+        },
+      },
+      {
+        event_type: 'evaluation.completed',
+        created_at: '2026-11-28T08:02:00Z',
+        project: 'flowpilot',
+        status: 'success',
+        metrics: {
+          'runtime.workflow_completion': 1,
+          'runtime.approval_compliance': 1,
+          'runtime.warning_count': 1,
+        },
+      },
+      { event_type: 'run.completed', project: 'evidenceflow', metrics: { 'runtime.citation_coverage': 1 } },
+      { event_type: 'evaluation.completed', project: 'unknown', metrics: { secret: 1 } },
+    ],
+  });
+
+  assert.equal(parsed.length, 3);
+  assert.deepEqual(parsed[0], {
+    project: 'evidenceflow',
+    createdAt: '2026-11-28T08:00:00.000Z',
+    status: 'success',
+    experimentId: 'rag-experiment-v2',
+    datasetVersion: 'docs-v2',
+    promptVersion: 'answer-v4',
+    modelVersion: 'model-v1',
+    configVersion: 'retrieval-v3',
+    frameworkMetrics: {
+      'external.ragas.faithfulness': 0.94,
+      'external.ragas.context_precision': 0.88,
+    },
+    runtimeMetrics: {
+      'runtime.citation_coverage': 0.96,
+      'retrieval.chunk_count': 4,
+    },
+  });
+  assert.deepEqual(parsed[1].runtimeMetrics, {
+    'runtime.extraction_completeness': 0.91,
+    'runtime.risk_finding_count': 2,
+    'procurement.quote_count': 3,
+  });
+  assert.deepEqual(parsed[2].runtimeMetrics, {
+    'runtime.workflow_completion': 1,
+    'runtime.approval_compliance': 1,
+    'runtime.warning_count': 1,
+  });
+  assert.equal('id' in parsed[0], false);
+  assert.equal('model' in parsed[0], false);
+  assert.equal('workflow' in parsed[0], false);
+});
+
+test('parseRuntimeEvaluations rejects malformed or unknown runtime metric values', async () => {
+  const { parseRuntimeEvaluations } = await import('../src/dashboard-data.mjs');
+  assert.equal(parseRuntimeEvaluations(null), null);
+  assert.deepEqual(parseRuntimeEvaluations({ results: [] }), []);
+  const parsed = parseRuntimeEvaluations({
+    results: [{
+      event_type: 'evaluation.completed',
+      created_at: '2026-11-28T08:00:00Z',
+      project: 'evidenceflow',
+      metrics: {
+        'runtime.citation_coverage': 1.2,
+        'runtime.guardrail_blocked': true,
+        'external.ragas.faithfulness': false,
+        'external.deepeval.faithfulness': 0.9,
+      },
+    }],
+  });
+  assert.deepEqual(parsed[0].runtimeMetrics, { 'runtime.guardrail_blocked': true });
+  assert.deepEqual(parsed[0].frameworkMetrics, { 'external.deepeval.faithfulness': 0.9 });
+});
+
+test('parseExperimentComparisons retains only safe version lineage and allowlisted metric deltas', async () => {
+  const { parseExperimentComparisons } = await import('../src/dashboard-data.mjs');
+  const parsed = parseExperimentComparisons({
+    target: 'quotesense',
+    baseline_experiment_id: 'private-baseline-id',
+    experiments: [
+      {
+        experiment_id: 'private-baseline-id',
+        is_baseline: true,
+        runs: 3,
+        score: 0.91,
+        pass_rate: 1,
+        first_seen: '2026-11-26T10:00:00Z',
+        last_seen: '2026-11-27T10:00:00Z',
+        lineage: {
+          target: 'quotesense',
+          model_version: 'model-v1',
+          dataset_version: 'quotes-v2',
+          prompt_version: 'extract-v3',
+          config_version: 'weights-v2',
+          private_note: 'discard',
+        },
+        metrics: { 'runtime.extraction_completeness': 0.9, 'runtime.risk_finding_count': 2, 'private.metric': 1 },
+        metric_deltas: { 'runtime.extraction_completeness': 0.04, 'runtime.risk_finding_count': -1, 'private.metric': 1 },
+      },
+      {
+        experiment_id: 'variant-id',
+        is_baseline: false,
+        runs: 2,
+        score: null,
+        pass_rate: 0.5,
+        first_seen: '2026-11-27T11:00:00Z',
+        last_seen: '2026-11-28T11:00:00Z',
+        lineage: { model_version: 'model-v2', dataset_version: 'quotes-v2', config_version: 'weights-v3' },
+        metrics: {},
+        metric_deltas: { 'runtime.extraction_completeness': -0.01, 'runtime.risk_finding_count': 1 },
+      },
+    ],
+  });
+
+  assert.equal(parsed.target, 'quotesense');
+  assert.equal(parsed.baselineExperimentId, 'private-baseline-id');
+  assert.equal(parsed.experiments.length, 2);
+  assert.equal(parsed.experiments[0].isBaseline, true);
+  assert.equal(parsed.experiments[0].runs, 3);
+  assert.equal(parsed.experiments[0].score, 0.91);
+  assert.deepEqual(parsed.experiments[0].lineage, {
+    modelVersion: 'model-v1',
+    datasetVersion: 'quotes-v2',
+    promptVersion: 'extract-v3',
+    configVersion: 'weights-v2',
+  });
+  assert.deepEqual(parsed.experiments[0].metricDeltas, {
+    'runtime.extraction_completeness': 0.04,
+    'runtime.risk_finding_count': -1,
+  });
+  assert.equal('experiment_id' in parsed.experiments[0], false);
+  assert.equal(parsed.experiments[1].score, null);
+});
+
+test('parseExperimentComparisons returns an empty comparison for unsupported targets', async () => {
+  const { parseExperimentComparisons } = await import('../src/dashboard-data.mjs');
+  assert.equal(parseExperimentComparisons({ target: 'unknown', experiments: [] }), null);
+  assert.equal(parseExperimentComparisons({ target: 'evidenceflow', experiments: [] }).experiments.length, 0);
+});
