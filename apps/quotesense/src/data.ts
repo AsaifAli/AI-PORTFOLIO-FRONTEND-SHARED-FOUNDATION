@@ -282,7 +282,39 @@ export function getProcurementComparison(result: QuoteAnalysis) {
   const matrix = view.comparisonMatrix;
   let suppliers = asRecords(matrix.suppliers);
   const lineItemsFromApi = asRecords(matrix.line_items);
-  const pricingFromApi = asRecords(matrix.pricing_reconciliation);
+  let pricing = asRecords(matrix.pricing_reconciliation);
+  if (!pricing.length) {
+    pricing = view.quotations.map((quote) => {
+      const subtotal = scoreNumber(quote.subtotal);
+      const total = scoreNumber(quote.total_cost);
+      const tax = scoreNumber(quote.tax_amount);
+      const shipping = scoreNumber(quote.shipping_cost);
+      const discount = scoreNumber(quote.discount_amount);
+      const other = scoreNumber(quote.additional_charges);
+      const reported = [tax, shipping, discount, other].filter((value) => value !== null);
+      const complete = subtotal !== null && total !== null
+        && tax !== null && shipping !== null && discount !== null && other !== null;
+      const calculated = subtotal !== null && reported.length
+        ? subtotal + (tax ?? 0) + (shipping ?? 0) - (discount ?? 0) + (other ?? 0)
+        : null;
+      const difference = calculated !== null && total !== null ? Number((total - calculated).toFixed(2)) : null;
+      return {
+        supplier: quote.supplier,
+        currency: quote.currency,
+        subtotal,
+        tax_amount: tax,
+        shipping_cost: shipping,
+        discount_amount: discount,
+        additional_charges: other,
+        stated_total: total,
+        calculated_total_from_reported_components: calculated,
+        difference,
+        status: complete
+          ? Math.abs(difference ?? 0) <= Math.max(1, Math.abs(total ?? 0) * 0.01) ? "matched" : "review"
+          : reported.length && subtotal !== null && total !== null ? "partial_check" : "insufficient_data",
+      };
+    });
+  }
 
   if (!suppliers.length) {
     const scoreMap = new Map(view.scores.map((score) => [
@@ -373,7 +405,7 @@ export function getProcurementComparison(result: QuoteAnalysis) {
   return {
     suppliers,
     lineItems,
-    pricing: pricingFromApi,
+    pricing,
     currencyComparable,
     currency: typeof matrix.currency === "string" ? matrix.currency : knownCurrencies.size === 1 ? [...knownCurrencies][0] : null,
     comparabilityReason: String(matrix.cost_comparability_reason || (currencyComparable
