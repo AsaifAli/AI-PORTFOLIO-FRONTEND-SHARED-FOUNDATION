@@ -6,15 +6,19 @@ import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, P
 import {
   createSampleProcessingTrace,
   createSampleQuoteAnalysis,
+  DEFAULT_SCORING_WEIGHTS,
   getAnalysisView,
   latestStageEvent,
+  mergeQuoteUploads,
   QUOTESENSE_PROCESSING_STAGES,
   scoreNumber,
+  toComparisonCsv,
   toSupplierCsv,
   validateQuoteUploads,
   type ProcessingStageEvent,
   type QuoteAnalysis,
 } from "./data";
+import { ProcurementComparison } from "./ProcurementComparison";
 import "@portfolio/ui/styles.css";
 import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
@@ -87,6 +91,10 @@ function formatStageMetrics(event: ProcessingStageEvent | null): string {
     const anomalies = metric("price_anomaly_count");
     if (risks !== null) parts.push(`${risks} risk findings`);
     if (anomalies !== null) parts.push(`${anomalies} price anomalies`);
+  } else if (event.stage === "market_research") {
+    const count = metric("result_count");
+    if (count !== null) parts.push(`${count} external source${count === 1 ? "" : "s"}`);
+    if (event.metrics?.available === false) parts.push("provider unavailable");
   } else if (event.stage === "complete") {
     const quotes = metric("quotation_count");
     const risks = metric("risk_finding_count");
@@ -100,10 +108,12 @@ function ProcessingJourney({
   events,
   busy,
   example,
+  marketEnabled = false,
 }: {
   events: ProcessingStageEvent[];
   busy: boolean;
   example: boolean;
+  marketEnabled?: boolean;
 }) {
   return (
     <Panel
@@ -117,7 +127,7 @@ function ProcessingJourney({
       actions={<StatusChip label={example ? "Synthetic example" : busy ? "Live analysis" : "Run trace"} tone={example ? "neutral" : busy ? "warn" : "good"}/>}
     >
       <ol className="journey-list" aria-live={busy ? "polite" : "off"}>
-        {QUOTESENSE_PROCESSING_STAGES.map((stage, index) => {
+        {QUOTESENSE_PROCESSING_STAGES.filter((stage) => stage.id !== "market_research" || marketEnabled).map((stage, index) => {
           const event = latestStageEvent(events, stage.id);
           const status = example ? "example" : event?.status || "pending";
           const statusLabel = status === "example" ? "Example"
@@ -163,6 +173,9 @@ function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [query, setQuery] = useState("Compare these supplier quotations and identify commercial risks, missing terms, and the strongest evidence-backed option.");
   const [criteria, setCriteria] = useState<string[]>([...CRITERIA]);
+  const [scoringWeights, setScoringWeights] = useState<Record<string, number>>({ ...DEFAULT_SCORING_WEIGHTS });
+  const [doMarketResearch, setDoMarketResearch] = useState(false);
+  const [marketScope, setMarketScope] = useState("");
   const [result, setResult] = useState<QuoteAnalysis | null>(null);
   const [tab, setTab] = useState<"summary" | "suppliers" | "evidence">("summary");
   const [busy, setBusy] = useState(false);
@@ -196,23 +209,34 @@ function App() {
   const completenessTone = view?.averageCompleteness === null || view?.averageCompleteness === undefined ? "neutral" : view.averageCompleteness >= 85 ? "good" : view.averageCompleteness >= 70 ? "warn" : "bad";
 
   function updateFiles(incoming: FileList | null) {
-    if (!incoming) return;
-    const next = Array.from(incoming);
-    const validation = validateQuoteUploads(next);
+    if (!incoming?.length) return;
+    const unique = mergeQuoteUploads(files, Array.from(incoming));
+    const validation = validateQuoteUploads(unique);
     if (validation) { setError(validation); return; }
-    setError(""); setFiles(next); setResult(null); setProcessingEvents([]); setDemoMode(false);
+    setError(""); setFiles(unique); setResult(null); setProcessingEvents([]); setDemoMode(false);
   }
 
   async function analyze(event: React.FormEvent) {
     event.preventDefault();
     if (!session.active || busy) return;
     if (!files.length) { setError("Add at least one supplier quotation before starting the analysis."); return; }
-    if (!criteria.length) { setError("Select at least one scoring criterion."); return; }
+    if (!criteria.length) { setError("Select at least one qualitative review focus."); return; }
+    if (!Object.values(scoringWeights).some((weight) => Number.isFinite(weight) && weight > 0)) {
+      setError("At least one deterministic scoring weight must be greater than zero.");
+      return;
+    }
+    if (doMarketResearch && !marketScope.trim()) {
+      setError("Enter a non-confidential product or service category for market context.");
+      return;
+    }
     setBusy(true); setError(""); setNotice(""); setResult(null); setProcessingEvents([]); setDemoMode(false);
     const form = new FormData();
     files.forEach((file) => form.append("files", file, file.name));
     form.append("query", query);
     form.append("criteria", criteria.join(","));
+    form.append("weights", JSON.stringify(scoringWeights));
+    form.append("do_market", doMarketResearch ? "true" : "false");
+    if (doMarketResearch) form.append("market_query", marketScope.trim());
     try {
       const response = await api.stream<QuoteAnalysis>(
         "/api/v1/analyses/stream",
@@ -268,16 +292,28 @@ function App() {
         {notice ? <Notice tone="success">{notice}</Notice> : null}
         {demoMode ? <Notice tone="info">Synthetic walkthrough: these supplier records and scores are illustrative. No quotation files were uploaded and no live model analysis was run.</Notice> : null}
 
-        {(busy || processingEvents.length > 0 || demoMode) ? <ProcessingJourney events={processingEvents} busy={busy} example={demoMode}/> : null}
+        {(busy || processingEvents.length > 0 || demoMode) ? <ProcessingJourney events={processingEvents} busy={busy} example={demoMode} marketEnabled={doMarketResearch || Boolean(result?.market)}/> : null}
 
         <div className="grid quotesense-grid">
           <div className="stack">
             <Panel title="New quotation analysis" detail="Upload supplier documents to begin a structured review." actions={<StatusChip label={health === "online" ? "API online" : health === "checking" ? "Checking API" : "API unavailable"} tone={health === "online" ? "good" : "warn"}/> }>
               <form onSubmit={(event) => void analyze(event)}>
-                <label className="file-drop quote-drop"><span className="file-drop-icon">＋</span><strong>{files.length ? `${files.length} file${files.length === 1 ? "" : "s"} ready` : "Drop quotation files here or browse"}</strong><small>PDF · DOCX · TXT · XLSX · up to 5 files · 50 MB each / 100 MB total</small><input type="file" multiple accept=".pdf,.docx,.txt,.xlsx" disabled={!session.active || busy} onChange={(event) => { updateFiles(event.target.files); event.currentTarget.value = ""; }}/></label>
-                {files.length ? <div className="selected-files">{files.map((file) => <div className="file-row" key={`${file.name}-${file.size}`}><span className="file-name">{file.name}</span><small>{(file.size / (1024 * 1024)).toFixed(1)} MB</small><button type="button" className="text-action danger-text" onClick={() => setFiles((current) => current.filter((item) => item !== file))}>Remove</button></div>)}</div> : null}
+                <label className="file-drop quote-drop" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); updateFiles(event.dataTransfer.files); }}><span className="file-drop-icon">＋</span><strong>{files.length ? `${files.length} quotation file${files.length === 1 ? "" : "s"} selected · add more` : "Drop 2–5 supplier quotations here or browse"}</strong><small>PDF · DOCX · TXT · XLSX · 50 MB each / 100 MB combined · selecting again adds files</small><input type="file" multiple accept=".pdf,.docx,.txt,.xlsx" disabled={!session.active || busy} onChange={(event) => { updateFiles(event.target.files); event.currentTarget.value = ""; }}/></label>
+                {files.length ? <div className="selected-files">{files.map((file) => <div className="file-row" key={`${file.name}-${file.size}`}><span className="file-name">{file.name}</span><small>{(file.size / (1024 * 1024)).toFixed(1)} MB</small><button type="button" className="text-action danger-text" onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setResult(null); setProcessingEvents([]); setDemoMode(false); }}>Remove</button></div>)}</div> : null}
                 <Field label="Decision brief" hint="Describe the business context and what a reviewer should pay attention to."><textarea value={query} onChange={(event) => setQuery(event.target.value)} maxLength={4000} disabled={!session.active || busy}/></Field>
-                <div className="field criteria-field"><span className="field-label">Scoring criteria</span><div className="pill-list">{CRITERIA.map((item) => <button key={item} type="button" className={`pill ${criteria.includes(item) ? "selected" : ""}`} aria-pressed={criteria.includes(item)} onClick={() => setCriteria((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div><small>Scoring weights and comparability checks are applied by the backend's deterministic business rules.</small></div>
+                <div className="field criteria-field"><span className="field-label">Qualitative review focus</span><div className="pill-list">{CRITERIA.map((item) => <button key={item} type="button" className={`pill ${criteria.includes(item) ? "selected" : ""}`} aria-pressed={criteria.includes(item)} onClick={() => setCriteria((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div><small>These guide the model's written assessment. They do not change the deterministic score.</small></div>
+                <div className="field scoring-weight-editor">
+                  <div className="weight-editor-heading"><span className="field-label">Deterministic scoring weights</span><small>Set what matters most to this purchasing decision. The backend normalizes these values to 100%.</small></div>
+                  <div className="weight-editor-grid">{CRITERIA.map((item) => <label className="weight-control" key={item}><span>{item[0].toUpperCase() + item.slice(1)}</span><span className="weight-control-input"><input type="number" min="0" max="100" step="5" value={scoringWeights[item] ?? 0} disabled={!session.active || busy} onChange={(event) => setScoringWeights((current) => ({ ...current, [item]: Math.max(0, Math.min(100, Number(event.target.value) || 0)) }))}/><small>%</small></span></label>)}</div>
+                  <small className="weight-total">Entered weight total: {Object.values(scoringWeights).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)}% · normalized at analysis time</small>
+                </div>
+                <div className="field market-context-field">
+                  <label className="market-toggle">
+                    <input type="checkbox" checked={doMarketResearch} disabled={!session.active || busy} onChange={(event) => setDoMarketResearch(event.target.checked)}/>
+                    <span><strong>Include optional market context</strong><small>Search public web sources for category-level context. This is separate from the supplier comparison.</small></span>
+                  </label>
+                  {doMarketResearch ? <Field label="Product or service category" hint="Use a general, non-confidential phrase. Uploaded documents and their contents are not sent to the market search provider."><input value={marketScope} maxLength={500} placeholder="e.g. commercial office chairs and height-adjustable desks" onChange={(event) => setMarketScope(event.target.value)} disabled={!session.active || busy}/></Field> : null}
+                </div>
                 <div className="analysis-submit"><Button variant="primary" type="submit" disabled={!session.active || busy || files.length === 0}>{busy ? <><span className="spinner dark-spinner"/> Analyzing documents…</> : "Analyze quotations ↗"}</Button><small>Model extraction is followed by schema validation and deterministic calculations.</small></div>
               </form>
             </Panel>
@@ -304,6 +340,8 @@ function App() {
             </Panel>
           </div>
         </div>
+
+        {result && view ? <ProcurementComparison result={result} onExport={() => downloadFile("quotesense-detailed-comparison.csv", "text/csv;charset=utf-8", toComparisonCsv(result))}/> : null}
 
         {result && view ? <section className="analysis-result-section">
           <div className="section-label"><span>02 / ANALYSIS DETAIL</span><small>Structured results · inspect before selecting a supplier</small></div>
