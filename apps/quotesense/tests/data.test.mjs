@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getAnalysisView, scoreNumber, toSupplierCsv, validateQuoteUploads } from "../src/data.ts";
+import { getAnalysisView, getProcurementComparison, scoreNumber, toComparisonCsv, toSupplierCsv, validateQuoteUploads } from "../src/data.ts";
 
 test("normalizes comparison, validation and qualitative recommendation separately", () => {
   const view = getAnalysisView({
@@ -67,4 +67,86 @@ test("sample walkthrough is explicitly synthetic and keeps deterministic ranking
   assert.equal(view.recommendationDiffers, true);
   assert.equal(view.weights.cost, 0.4);
   assert.equal(createSampleProcessingTrace().length, 8);
+});
+
+
+test("builds a side-by-side procurement comparison and marks absent line items honestly", () => {
+  const result = {
+    quotations: [
+      {
+        supplier: "Alpha",
+        source_document: "alpha.pdf",
+        currency: "INR",
+        total_cost: 100,
+        subtotal: 90,
+        tax_amount: 10,
+        tax_included: true,
+        shipping_cost: 0,
+        discount_amount: 0,
+        additional_charges: 0,
+        line_items: [
+          { description: "Industrial printer", quantity: 2, unit: "units", unit_price: 45, total_price: 90 },
+        ],
+      },
+      {
+        supplier: "Beta",
+        source_document: "beta.pdf",
+        currency: "INR",
+        total_cost: 120,
+        subtotal: 100,
+        tax_amount: 20,
+        tax_included: true,
+        shipping_cost: 0,
+        discount_amount: 0,
+        additional_charges: 0,
+        line_items: [
+          { description: "Industrial printer", quantity: 2, unit: "units", unit_price: 50, total_price: 100 },
+          { description: "Installation", quantity: 1, unit: "service", unit_price: 0, total_price: 0 },
+        ],
+      },
+    ],
+    scores: [
+      { supplier: "Beta", score: 80, cost_comparable: true },
+      { supplier: "Alpha", score: 90, cost_comparable: true },
+    ],
+  };
+  const comparison = getProcurementComparison(result);
+  assert.equal(comparison.currencyComparable, true);
+  assert.equal(comparison.lowestPriceSupplier, "Alpha");
+  assert.equal(comparison.lowestPrice, 100);
+  assert.equal(comparison.suppliers.find((item) => item.supplier === "Beta")?.price_difference_from_lowest, 20);
+  assert.equal(comparison.suppliers.find((item) => item.supplier === "Beta")?.percent_above_lowest, 20);
+  const printer = comparison.lineItems.find((item) => item.description === "Industrial printer");
+  assert.equal(printer?.unit_price_comparable, true);
+  assert.equal(printer?.lowest_unit_price, undefined);
+  const installation = comparison.lineItems.find((item) => item.description === "Installation");
+  assert.deepEqual(installation?.not_listed_by, ["Alpha"]);
+  assert.equal(comparison.pricing[0]?.status, "matched");
+  const csv = toComparisonCsv(result);
+  assert.match(csv, /Not listed in this quotation/);
+  assert.match(csv, /PRICING RECONCILIATION/);
+});
+
+test("does not compare totals with missing or mixed currency and does not assume missing components are zero", () => {
+  const comparison = getProcurementComparison({
+    quotations: [
+      { supplier: "Alpha", total_cost: 100, currency: "INR", subtotal: 90, tax_amount: 10 },
+      { supplier: "Beta", total_cost: 110, currency: "USD", subtotal: 100, tax_amount: 10 },
+    ],
+    scores: [],
+  });
+  assert.equal(comparison.currencyComparable, false);
+  assert.equal(comparison.lowestPriceSupplier, "");
+  assert.equal(comparison.suppliers.every((item) => item.price_difference_from_lowest === null), true);
+  assert.equal(comparison.pricing.every((item) => item.status === "partial_check"), true);
+});
+
+test("sample procurement comparison includes itemized scope, commercial terms and price deltas", async () => {
+  const { createSampleQuoteAnalysis, getProcurementComparison } = await import("../src/data.ts");
+  const comparison = getProcurementComparison(createSampleQuoteAnalysis());
+  assert.equal(comparison.suppliers.length, 3);
+  assert.equal(comparison.lineItems.length >= 3, true);
+  assert.equal(comparison.lowestPriceSupplier, "Mango Industrial Supply");
+  assert.equal(comparison.currencyComparable, true);
+  assert.ok(comparison.suppliers.some((supplier) => supplier.warranty === "24 months"));
 });
