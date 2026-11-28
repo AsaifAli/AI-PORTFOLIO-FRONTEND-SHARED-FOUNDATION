@@ -312,3 +312,25 @@ export function parseExperimentComparisons(value) {
     experiments,
   };
 }
+
+
+/** Return only the metric family selected by the live evaluation source filter. */
+export function filterRuntimeMetricSources(row, source) {
+  if (!row || typeof row !== "object") return { frameworkMetrics: {}, runtimeMetrics: {} };
+  if (source === "all") {
+    return {
+      frameworkMetrics: { ...(row.frameworkMetrics || {}) },
+      runtimeMetrics: { ...(row.runtimeMetrics || {}) },
+    };
+  }
+  if (source === "native") {
+    return { frameworkMetrics: {}, runtimeMetrics: { ...(row.runtimeMetrics || {}) } };
+  }
+  const prefix = "external." + source + ".";
+  return {
+    frameworkMetrics: Object.fromEntries(
+      Object.entries(row.frameworkMetrics || {}).filter(([key]) => key.startsWith(prefix)),
+    ),
+    runtimeMetrics: {},
+  };
+}
