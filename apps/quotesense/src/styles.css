@@ -387,3 +387,19 @@
 @media(prefers-reduced-motion:reduce) {
   .comparison-table-scroll { scroll-behavior: auto; }
 }
+
+
+.market-context-field { margin-top: 15px; padding: 12px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.016); }
+.market-toggle { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+.market-toggle input { margin-top: 2px; accent-color: var(--accent); }
+.market-toggle > span { display: grid; gap: 4px; }
+.market-toggle strong { color: var(--text); font-size: 10px; }
+.market-toggle small { color: var(--faint); font-size: 9px; line-height: 1.5; }
+.market-context-field .field { margin-top: 12px; }
+.market-source-list { display: grid; gap: 9px; }
+.market-source { display: grid; gap: 7px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.015); }
+.market-source > div { display: grid; gap: 5px; min-width: 0; }
+.market-source strong { color: var(--text); font-size: 10px; line-height: 1.45; }
+.market-source p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
+.market-source a { width: fit-content; color: var(--accent); font-size: 9px; text-decoration: none; }
+.market-source a:hover { text-decoration: underline; }
