@@ -128,6 +128,33 @@ export function ProcurementComparison({
         {suppliers.length < 2 ? <Notice tone="warning">Only one quotation was extracted. Upload another supplier quotation to make a meaningful comparison.</Notice> : null}
       </Panel>
 
+      {result.market ? (() => {
+        const market = result.market as QuoteRecord;
+        const insight = typeof market.insights === "object" && market.insights !== null && !Array.isArray(market.insights)
+          ? market.insights as QuoteRecord
+          : {};
+        const results = asRecords(insight.results);
+        const providerUnavailable = insight.status === "unavailable";
+        return <Panel
+          title="Optional market context"
+          detail="External category-level research. These sources are contextual references, not verified supplier quotations or a substitute for the bid documents."
+        >
+          {providerUnavailable ? <Notice tone="info">{String(insight.message || "External market search is not available. The supplier comparison has still completed.")}</Notice> : null}
+          {results.length ? <div className="market-source-list">{results.map((item, index) => {
+            let href = "";
+            try {
+              const candidate = new URL(String(item.url || ""));
+              if (candidate.protocol === "https:" || candidate.protocol === "http:") href = candidate.toString();
+            } catch { /* Ignore malformed third-party source URLs. */ }
+            return <article className="market-source" key={`market-${index}`}>
+              <div><strong>{String(item.title || `Source ${index + 1}`)}</strong><p>{String(item.content || item.snippet || "No source excerpt returned.")}</p></div>
+              {href ? <a href={href} target="_blank" rel="noreferrer">Open source ↗</a> : null}
+            </article>;
+          })}</div> : !providerUnavailable ? <Notice tone="info">No market context sources were returned for this category.</Notice> : null}
+          {market.query ? <p className="comparison-footnote">Search scope: {String(market.query)}</p> : null}
+        </Panel>;
+      })() : null}
+
       <Panel
         title="Weighted decision scorecard"
         detail="See which scoring dimensions drive each supplier's deterministic rank. Weights are normalized by the backend."
