@@ -365,7 +365,7 @@
 .comparison-matrix th, .comparison-matrix td { min-width: 145px; padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 .comparison-matrix thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); color: var(--text); font: 650 10px Manrope, sans-serif; }
 .comparison-matrix thead th:first-child, .comparison-matrix tbody th { min-width: 165px; }
-.comparison-matrix thead th small, .comparison-matrix tbody th small { display: block; margin-top: 4px; color: var(--faint); font: 400 8px/1.4 inherit; overflow-wrap: anywhere; }
+.comparison-matrix thead th small, .comparison-matrix tbody th small { display: block; margin-top: 4px; color: var(--faint); font-size: 8px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
 .comparison-matrix tbody th { color: var(--muted); font-size: 9px; font-weight: 650; }
 .comparison-matrix td { color: var(--text); font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
 .comparison-matrix tr:last-child th, .comparison-matrix tr:last-child td { border-bottom: 0; }
