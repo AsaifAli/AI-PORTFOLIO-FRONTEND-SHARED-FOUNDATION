@@ -18,6 +18,7 @@ export const QUOTESENSE_PROCESSING_STAGES = [
   { id: "validation", label: "Validation", description: "Schema and completeness checks" },
   { id: "scoring", label: "Deterministic scoring", description: "Configured business rules" },
   { id: "risk_assessment", label: "Commercial risk review", description: "Missing terms and eligible anomalies" },
+  { id: "market_research", label: "Optional market context", description: "External category-level context and source links" },
   { id: "analysis", label: "Comparative assessment", description: "LLM-assisted review of the validated results" },
   { id: "recommendation", label: "Recommendation", description: "Evidence-informed option for human review" },
   { id: "complete", label: "Ready for review", description: "Final result returned" },
@@ -59,6 +60,21 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       delivery_timeline: "21 days",
       contact_info: "sample@example.invalid",
       warranty: "12 months",
+      quote_reference: "AS-2026-041",
+      quote_date: "2026-11-18",
+      subtotal: 1_050_847.46,
+      tax_amount: 189_152.54,
+      tax_included: true,
+      shipping_cost: 0,
+      discount_amount: 0,
+      additional_charges: 0,
+      payment_terms: "Net 30 days after delivery",
+      support: "Business-hours support",
+      exclusions: [],
+      line_items: [
+        { description: "Ergonomic office chairs", quantity: 50, unit: "units", unit_price: 12000, total_price: 600000, notes: "Standard fabric finish" },
+        { description: "Height-adjustable desks", quantity: 20, unit: "units", unit_price: 22542.37, total_price: 450847.46, notes: "Cable management included" },
+      ],
     },
     {
       supplier: "Mango Industrial Supply",
@@ -71,6 +87,22 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       delivery_timeline: "45 days",
       contact_info: "",
       warranty: "24 months",
+      quote_reference: "MIS-Q-881",
+      quote_date: "2026-11-20",
+      subtotal: 1_000_000,
+      tax_amount: 180_000,
+      tax_included: true,
+      shipping_cost: 0,
+      discount_amount: 0,
+      additional_charges: 0,
+      payment_terms: "40% advance; balance after acceptance",
+      support: "Two-year extended service desk",
+      exclusions: [],
+      line_items: [
+        { description: "Ergonomic office chairs", quantity: 50, unit: "units", unit_price: 11500, total_price: 575000, notes: "Extended warranty included" },
+        { description: "Height-adjustable desks", quantity: 20, unit: "units", unit_price: 21250, total_price: 425000, notes: "Cable management included" },
+        { description: "Installation", quantity: 1, unit: "service", unit_price: 0, total_price: 0, notes: "Included in quoted price" },
+      ],
     },
     {
       supplier: "Northstar Workplace",
@@ -83,6 +115,22 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
       delivery_timeline: "45 days",
       contact_info: "sample@example.invalid",
       warranty: "",
+      quote_reference: "NW-5561",
+      quote_date: "2026-11-16",
+      subtotal: 1_600_000,
+      tax_amount: 288_000,
+      tax_included: true,
+      shipping_cost: 2_000,
+      discount_amount: 0,
+      additional_charges: 0,
+      payment_terms: "Full payment upfront",
+      support: "Support not specified",
+      exclusions: ["On-site installation"],
+      line_items: [
+        { description: "Ergonomic office chairs", quantity: 50, unit: "units", unit_price: 14000, total_price: 700000, notes: "Basic model" },
+        { description: "Height-adjustable desks", quantity: 20, unit: "units", unit_price: 35000, total_price: 700000, notes: "Standard finish" },
+        { description: "Delivery", quantity: 1, unit: "service", unit_price: 200000, total_price: 200000, notes: "Standard delivery" },
+      ],
     },
   ];
 
@@ -102,7 +150,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
     scores: [
       { supplier: "Aster Office Systems", score: 89.4, cost_score: 53.8, completeness_score: 100, timeline_score: 88.3, terms_score: 90, risk_score: 100, currency: "INR", total_cost: 1_240_000, cost_comparable: true },
       { supplier: "Mango Industrial Supply", score: 87.8, cost_score: 100, completeness_score: 100, timeline_score: 84.4, terms_score: 90, risk_score: 90, currency: "INR", total_cost: 1_180_000, cost_comparable: true },
-      { supplier: "Northstar Workplace", score: 67.2, cost_score: 0, completeness_score: 80, timeline_score: 75, terms_score: 55, risk_score: 55, currency: "INR", total_cost: 1_390_000, cost_comparable: true },
+      { supplier: "Northstar Workplace", score: 67.2, cost_score: 0, completeness_score: 80, timeline_score: 75, terms_score: 55, risk_score: 55, currency: "INR", total_cost: 1_890_000, cost_comparable: true },
     ],
     weights: { cost: 0.4, completeness: 0.25, timeline: 0.15, terms: 0.1, risk: 0.1 },
     risks: [
@@ -121,7 +169,7 @@ export function createSampleQuoteAnalysis(): QuoteAnalysis {
     },
     evidence: [
       { source: "Aster Office Systems · sample", location: "Page 1", text: "Delivery: 21 days. Net 30 payment terms. One-year warranty included." },
-      { source: "Mango Industrial Supply · sample", location: "Page 2", text: "Delivery: 28 days. Two-year warranty and extended service desk included." },
+      { source: "Mango Industrial Supply · sample", location: "Page 2", text: "Delivery: 45 days. Two-year warranty and extended service desk included. Installation is included." },
       { source: "Northstar Workplace · sample", location: "Page 1", text: "Full payment upfront. Warranty period not specified." },
     ],
     metrics: { document_count: 3, quotation_count: 3, pipeline_seconds: 12.4, llm_provider: "sample", llm_model: "synthetic-example" },
@@ -132,6 +180,18 @@ export const MAX_QUOTE_FILES = 5;
 export const MAX_QUOTE_FILE_BYTES = 50 * 1024 * 1024;
 export const MAX_QUOTE_TOTAL_BYTES = 100 * 1024 * 1024;
 const SUPPORTED_QUOTE_EXTENSIONS = new Set(["pdf", "docx", "txt", "xlsx"]);
+
+export function mergeQuoteUploads<T extends { name: string; size: number; lastModified?: number }>(
+  current: T[],
+  incoming: T[],
+): T[] {
+  const unique = new Map<string, T>();
+  for (const file of [...current, ...incoming]) {
+    const key = `${file.name}:${file.size}:${file.lastModified ?? 0}`;
+    if (!unique.has(key)) unique.set(key, file);
+  }
+  return [...unique.values()];
+}
 
 export function validateQuoteUploads(
   files: Array<{ name: string; size: number }>,
@@ -170,6 +230,9 @@ export function getAnalysisView(result: QuoteAnalysis) {
   const evidence = asRecords(result.evidence);
   const deterministicLeader = scores[0] ?? null;
   const primary = ((result.recommendation as QuoteRecord | undefined)?.recommendations as QuoteRecord | undefined)?.primary_recommendation as QuoteRecord | undefined;
+  const comparisonMatrix = typeof result.comparison_matrix === "object" && result.comparison_matrix !== null && !Array.isArray(result.comparison_matrix)
+    ? result.comparison_matrix as QuoteRecord
+    : {};
   const rawWeights = result.weights;
   const weights: Record<string, number> = {};
   if (typeof rawWeights === "object" && rawWeights !== null && !Array.isArray(rawWeights)) {
@@ -186,6 +249,7 @@ export function getAnalysisView(result: QuoteAnalysis) {
   return {
     quotations,
     scores,
+    comparisonMatrix,
     validation,
     risks,
     evidence,
@@ -215,4 +279,273 @@ export function toSupplierCsv(result: QuoteAnalysis): string {
     ]);
   });
   return rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+}
+
+
+export const DEFAULT_SCORING_WEIGHTS: Record<string, number> = {
+  cost: 40,
+  completeness: 25,
+  timeline: 15,
+  terms: 10,
+  risk: 10,
+};
+
+export function getProcurementComparison(result: QuoteAnalysis) {
+  const view = getAnalysisView(result);
+  const matrix = view.comparisonMatrix;
+  let suppliers = asRecords(matrix.suppliers);
+  const lineItemsFromApi = asRecords(matrix.line_items);
+  let pricing = asRecords(matrix.pricing_reconciliation);
+  if (!pricing.length) {
+    pricing = view.quotations.map((quote) => {
+      const subtotal = scoreNumber(quote.subtotal);
+      const total = scoreNumber(quote.total_cost);
+      const tax = scoreNumber(quote.tax_amount);
+      const shipping = scoreNumber(quote.shipping_cost);
+      const discount = scoreNumber(quote.discount_amount);
+      const other = scoreNumber(quote.additional_charges);
+      const reported = [tax, shipping, discount, other].filter((value) => value !== null);
+      const complete = subtotal !== null && total !== null
+        && tax !== null && shipping !== null && discount !== null && other !== null;
+      const calculated = subtotal !== null && reported.length
+        ? subtotal + (tax ?? 0) + (shipping ?? 0) - (discount ?? 0) + (other ?? 0)
+        : null;
+      const difference = calculated !== null && total !== null ? Number((total - calculated).toFixed(2)) : null;
+      return {
+        supplier: quote.supplier,
+        currency: quote.currency,
+        subtotal,
+        tax_amount: tax,
+        shipping_cost: shipping,
+        discount_amount: discount,
+        additional_charges: other,
+        stated_total: total,
+        calculated_total_from_reported_components: calculated,
+        difference,
+        status: complete
+          ? Math.abs(difference ?? 0) <= Math.max(1, Math.abs(total ?? 0) * 0.01) ? "matched" : "review"
+          : reported.length && subtotal !== null && total !== null ? "partial_check" : "insufficient_data",
+      };
+    });
+  }
+
+  if (!suppliers.length) {
+    const scoreMap = new Map(view.scores.map((score) => [
+      String(score.supplier || "").trim().toLowerCase(),
+      score,
+    ]));
+    suppliers = view.quotations.map((quote, index) => {
+      const supplier = String(quote.supplier || quote.vendor || `Quotation ${index + 1}`);
+      const score = scoreMap.get(supplier.trim().toLowerCase()) || {};
+      return {
+        supplier,
+        source_document: quote.source_document,
+        total_cost: quote.total_cost,
+        currency: quote.currency,
+        score: score.score,
+        price_difference_from_lowest: null,
+        percent_above_lowest: null,
+        delivery_timeline: quote.delivery_timeline,
+        payment_terms: quote.payment_terms || quote.terms_conditions,
+        warranty: quote.warranty,
+        support: quote.support,
+        validity_period: quote.validity_period,
+        tax_amount: quote.tax_amount,
+        tax_included: quote.tax_included,
+        shipping_cost: quote.shipping_cost,
+        discount_amount: quote.discount_amount,
+        additional_charges: quote.additional_charges,
+        exclusions: quote.exclusions,
+        line_item_count: asRecords(quote.line_items).length,
+      };
+    });
+  }
+
+  const scoreBySupplier = new Map(view.scores.map((score) => [
+    String(score.supplier || "").trim().toLowerCase(),
+    score,
+  ]));
+  for (const supplier of suppliers) {
+    const score = scoreBySupplier.get(String(supplier.supplier || "").trim().toLowerCase());
+    if (score) {
+      supplier.score = score.score;
+      supplier.cost_score = score.cost_score;
+      supplier.completeness_score = score.completeness_score;
+      supplier.timeline_score = score.timeline_score;
+      supplier.terms_score = score.terms_score;
+      supplier.risk_score = score.risk_score;
+      supplier.score_weights = score.weights;
+    }
+  }
+
+  let lineItems = lineItemsFromApi;
+  if (!lineItems.length) {
+    const grouped = new Map<string, QuoteRecord>();
+    for (const quote of view.quotations) {
+      const supplier = String(quote.supplier || quote.vendor || "Unknown supplier");
+      for (const item of asRecords(quote.line_items)) {
+        const description = String(item.description || "").trim();
+        const key = description.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        if (!key) continue;
+        if (!grouped.has(key)) grouped.set(key, { description, offers: [], not_listed_by: [] });
+        const group = grouped.get(key)!;
+        const offers = asRecords(group.offers);
+        offers.push({
+          supplier,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          notes: item.notes,
+          currency: quote.currency,
+          source_document: quote.source_document,
+        });
+        group.offers = offers;
+      }
+    }
+    lineItems = [...grouped.values()].map((group) => {
+      const offers = asRecords(group.offers);
+      const offered = new Set(offers.map((offer) => String(offer.supplier)));
+      return {
+        ...group,
+        not_listed_by: suppliers
+          .map((item) => String(item.supplier || "Unknown supplier"))
+          .filter((supplier) => !offered.has(supplier)),
+        unit_price_comparable: offers.filter((offer) => scoreNumber(offer.unit_price) !== null).length >= 2
+          && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+          && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
+          && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1,
+        lowest_unit_price: (() => {
+          const values = offers.map((offer) => scoreNumber(offer.unit_price)).filter((value): value is number => value !== null);
+          const valid = offers.length >= 2
+            && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1;
+          return valid && values.length ? Math.min(...values) : null;
+        })(),
+        highest_unit_price: (() => {
+          const values = offers.map((offer) => scoreNumber(offer.unit_price)).filter((value): value is number => value !== null);
+          const valid = offers.length >= 2
+            && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1;
+          return valid && values.length ? Math.max(...values) : null;
+        })(),
+      };
+    });
+  }
+
+  const knownCurrencies = new Set(suppliers
+    .filter((supplier) => scoreNumber(supplier.total_cost) !== null)
+    .map((supplier) => String(supplier.currency || "").trim().toUpperCase()));
+  const pricedCount = suppliers.filter((supplier) => scoreNumber(supplier.total_cost) !== null).length;
+  const fallbackComparable = pricedCount >= 2
+    && knownCurrencies.size === 1
+    && !knownCurrencies.has("");
+  const currencyComparable = typeof matrix.cost_comparable === "boolean"
+    ? matrix.cost_comparable
+    : fallbackComparable;
+  const cheapest = currencyComparable
+    ? [...suppliers].filter((supplier) => scoreNumber(supplier.total_cost) !== null)
+      .sort((a, b) => (scoreNumber(a.total_cost) ?? Infinity) - (scoreNumber(b.total_cost) ?? Infinity))[0]
+    : undefined;
+  if (typeof matrix.cost_comparable !== "boolean" && currencyComparable && cheapest) {
+    const baseline = scoreNumber(cheapest.total_cost) ?? 0;
+    suppliers = suppliers.map((supplier) => {
+      const amount = scoreNumber(supplier.total_cost);
+      const difference = amount === null ? null : Number((amount - baseline).toFixed(2));
+      return {
+        ...supplier,
+        price_difference_from_lowest: difference,
+        percent_above_lowest: difference === null || baseline === 0
+          ? null
+          : Number((difference / baseline * 100).toFixed(2)),
+      };
+    });
+  }
+  return {
+    suppliers,
+    lineItems,
+    pricing,
+    currencyComparable,
+    currency: typeof matrix.currency === "string" ? matrix.currency : knownCurrencies.size === 1 ? [...knownCurrencies][0] : null,
+    comparabilityReason: String(matrix.cost_comparability_reason || (currencyComparable
+      ? "Supplier totals use a shared currency."
+      : "Cost comparison is unavailable until at least two priced quotations with the same explicit currency are available.")),
+    lowestPriceSupplier: String(matrix.lowest_price_supplier || cheapest?.supplier || ""),
+    lowestPrice: scoreNumber(matrix.lowest_price) ?? scoreNumber(cheapest?.total_cost),
+  };
+}
+
+function csvCell(value: unknown): string {
+  const raw = value === null || value === undefined ? "" : Array.isArray(value) ? value.join("; ") : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
+}
+
+export function toComparisonCsv(result: QuoteAnalysis): string {
+  const comparison = getProcurementComparison(result);
+  const rows: string[][] = [];
+  rows.push(["SUPPLIER COMPARISON"]);
+  rows.push(["Supplier", "Source document", "Currency", "Quoted total", "Score", "Difference from lowest", "% above lowest", "Delivery", "Payment terms", "Warranty", "Support", "Validity", "Tax amount", "Tax included", "Shipping", "Discount", "Additional charges", "Listed exclusions"]);
+  for (const item of comparison.suppliers) {
+    rows.push([
+      String(item.supplier || ""),
+      String(item.source_document || ""),
+      String(item.currency || ""),
+      String(item.total_cost ?? ""),
+      String(item.score ?? ""),
+      String(item.price_difference_from_lowest ?? ""),
+      String(item.percent_above_lowest ?? ""),
+      String(item.delivery_timeline || ""),
+      String(item.payment_terms || ""),
+      String(item.warranty || ""),
+      String(item.support || ""),
+      String(item.validity_period || ""),
+      String(item.tax_amount ?? ""),
+      String(item.tax_included ?? ""),
+      String(item.shipping_cost ?? ""),
+      String(item.discount_amount ?? ""),
+      String(item.additional_charges ?? ""),
+      Array.isArray(item.exclusions) ? item.exclusions.join("; ") : String(item.exclusions || ""),
+    ]);
+  }
+  rows.push([]);
+  rows.push(["ITEMIZED COMPARISON"]);
+  rows.push(["Line item", "Supplier", "Quantity", "Unit", "Unit price", "Line total", "Currency", "Notes"]);
+  for (const group of comparison.lineItems) {
+    const offers = asRecords(group.offers);
+    for (const offer of offers) {
+      rows.push([
+        String(group.description || ""),
+        String(offer.supplier || ""),
+        String(offer.quantity ?? ""),
+        String(offer.unit || ""),
+        String(offer.unit_price ?? ""),
+        String(offer.total_price ?? ""),
+        String(offer.currency || ""),
+        String(offer.notes || ""),
+      ]);
+    }
+    for (const supplier of Array.isArray(group.not_listed_by) ? group.not_listed_by : []) {
+      rows.push([String(group.description || ""), String(supplier), "", "", "", "", "", "Not listed in this quotation"]);
+    }
+  }
+  rows.push([]);
+  rows.push(["PRICING RECONCILIATION"]);
+  rows.push(["Supplier", "Subtotal", "Tax", "Shipping", "Discount", "Other charges", "Stated total", "Calculated total", "Difference", "Status"]);
+  for (const item of comparison.pricing) {
+    rows.push([
+      String(item.supplier || ""),
+      String(item.subtotal ?? ""),
+      String(item.tax_amount ?? ""),
+      String(item.shipping_cost ?? ""),
+      String(item.discount_amount ?? ""),
+      String(item.additional_charges ?? ""),
+      String(item.stated_total ?? ""),
+      String(item.calculated_total_from_reported_components ?? ""),
+      String(item.difference ?? ""),
+      String(item.status || ""),
+    ]);
+  }
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
