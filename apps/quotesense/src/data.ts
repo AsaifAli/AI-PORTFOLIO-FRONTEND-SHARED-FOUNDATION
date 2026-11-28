@@ -18,6 +18,7 @@ export const QUOTESENSE_PROCESSING_STAGES = [
   { id: "validation", label: "Validation", description: "Schema and completeness checks" },
   { id: "scoring", label: "Deterministic scoring", description: "Configured business rules" },
   { id: "risk_assessment", label: "Commercial risk review", description: "Missing terms and eligible anomalies" },
+  { id: "market_research", label: "Optional market context", description: "External category-level context and source links" },
   { id: "analysis", label: "Comparative assessment", description: "LLM-assisted review of the validated results" },
   { id: "recommendation", label: "Recommendation", description: "Evidence-informed option for human review" },
   { id: "complete", label: "Ready for review", description: "Final result returned" },
