@@ -573,3 +573,265 @@ body {
   .evaluation-app .application-card:hover,
   .evaluation-app .kpi:hover { transform: none; }
 }
+
+
+/* Live evaluation evidence: judge scores, runtime checks and experiment lineage. */
+.evaluation-table-panel,
+.experiment-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148,167,194,.16);
+  border-radius: 17px;
+  background: linear-gradient(155deg, rgba(17,28,44,.96), rgba(11,19,31,.98));
+}
+.evaluation-controls,
+.experiment-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 16px 17px;
+  border-bottom: 1px solid rgba(148,167,194,.12);
+}
+.evaluation-controls label,
+.experiment-controls label {
+  display: grid;
+  gap: 5px;
+  min-width: 150px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.evaluation-controls label span,
+.experiment-controls label span {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.evaluation-controls select,
+.evaluation-controls input,
+.experiment-controls select {
+  min-height: 36px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0 10px;
+  background: #0b1421;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+.evaluation-controls .evaluation-search { min-width: min(270px,100%); flex: 1 1 220px; }
+.evaluation-controls input { width: 100%; }
+.evaluation-count {
+  margin-left: auto;
+  padding: 0 2px 8px;
+  color: var(--soft);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.evaluation-table-scroll { width: 100%; overflow-x: auto; }
+.evaluation-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.evaluation-table th,
+.evaluation-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(148,167,194,.09);
+  vertical-align: top;
+  text-align: left;
+}
+.evaluation-table th {
+  color: var(--soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.evaluation-table tr:last-child td { border-bottom: 0; }
+.evaluation-table td { color: var(--text); }
+.evaluation-time,
+.evaluation-subtle {
+  color: var(--muted)!important;
+  white-space: nowrap;
+}
+.evaluation-subtle { margin-top: 4px; font-size: 9px; text-transform: capitalize; }
+.evaluation-lineage,
+.experiment-lineage {
+  display: grid;
+  gap: 5px;
+  min-width: 125px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.evaluation-lineage span,
+.experiment-lineage span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.evaluation-lineage b,
+.experiment-lineage b {
+  min-width: 50px;
+  color: var(--soft);
+  font-weight: 650;
+}
+.evaluation-metric-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 150px;
+  max-width: 360px;
+}
+.evaluation-metric-pill,
+.delta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid rgba(148,167,194,.16);
+  border-radius: 8px;
+  padding: 5px 7px;
+  background: rgba(148,167,194,.045);
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.evaluation-metric-pill strong,
+.delta-chip b {
+  color: var(--text);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.evaluation-metric-pill b { color: var(--cyan); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.evaluation-metric-pill.native b { color: var(--violet); }
+.metric-empty {
+  color: var(--soft);
+  font-size: 10px;
+  font-style: italic;
+}
+.evaluation-empty-row,
+.evaluation-empty {
+  padding: 24px!important;
+  color: var(--soft)!important;
+  text-align: center!important;
+  font-size: 11px!important;
+}
+.evaluation-table-note {
+  margin: 0;
+  padding: 12px 16px 14px;
+  border-top: 1px solid rgba(148,167,194,.09);
+  color: var(--soft);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.experiment-panel { padding-bottom: 0; }
+.experiment-list { display: grid; }
+.experiment-row {
+  display: grid;
+  grid-template-columns: minmax(110px,.65fr) minmax(160px,1fr) minmax(220px,1.6fr);
+  align-items: start;
+  gap: 16px;
+  padding: 15px 17px;
+  border-bottom: 1px solid rgba(148,167,194,.1);
+}
+.experiment-row.baseline {
+  background: linear-gradient(90deg, rgba(109,224,161,.045), transparent 55%);
+}
+.experiment-row:last-child { border-bottom: 0; }
+.experiment-identity { display: grid; gap: 4px; }
+.experiment-identity > span {
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.experiment-identity strong { font-size: 13px; }
+.experiment-identity > b { font-size: 18px; letter-spacing: -.03em; }
+.experiment-identity small { color: var(--muted); font-size: 9px; }
+.delta-positive { color: var(--green)!important; }
+.delta-negative { color: var(--red)!important; }
+.experiment-deltas { display: flex; flex-wrap: wrap; gap: 5px; }
+.delta-chip.positive { border-color: rgba(109,224,161,.2); }
+.delta-chip.negative { border-color: rgba(255,135,148,.2); }
+.delta-chip.positive:not(b) { color: #b9f2d0; }
+.delta-chip.negative:not(b) { color: #ffc0c7; }
+.framework-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  gap: 10px;
+}
+.framework-coverage-grid article {
+  min-width: 0;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: linear-gradient(155deg, rgba(17,28,44,.9), rgba(11,19,31,.95));
+}
+.framework-coverage-grid h3 { margin: 11px 0 5px; font-size: 13px; }
+.framework-coverage-grid p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.framework-status {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 4px 7px;
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.framework-status.connected { color: #b9f2d0; border-color: rgba(109,224,161,.25); }
+.framework-status.optional { color: #f4d69a; border-color: rgba(242,199,120,.25); }
+.framework-status.adapter { color: #d0c3ff; border-color: rgba(182,160,255,.25); }
+@media(max-width:1180px) {
+  .framework-coverage-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:900px) {
+  .experiment-row { grid-template-columns: minmax(100px,.6fr) 1fr; }
+  .experiment-deltas { grid-column: 1 / -1; }
+}
+@media(max-width:650px) {
+  .evaluation-controls,
+  .experiment-controls { align-items: stretch; }
+  .evaluation-controls label,
+  .experiment-controls label,
+  .evaluation-controls .evaluation-search { width: 100%; min-width: 0; }
+  .evaluation-count { width: 100%; margin-left: 0; padding-bottom: 0; }
+  .experiment-row { grid-template-columns: 1fr; gap: 10px; }
+  .experiment-deltas { grid-column: auto; }
+  .framework-coverage-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:420px) {
+  .framework-coverage-grid { grid-template-columns: 1fr; }
+}
+:root[data-theme="light"] .evaluation-table-panel,
+:root[data-theme="light"] .experiment-panel,
+:root[data-theme="light"] .framework-coverage-grid article {
+  border-color: #dbe4ed;
+  background: linear-gradient(155deg, #fff, #f7f9fc);
+}
+:root[data-theme="light"] .evaluation-controls select,
+:root[data-theme="light"] .evaluation-controls input,
+:root[data-theme="light"] .experiment-controls select {
+  border-color: #d6e0e9;
+  background: #fff;
+  color: #304258;
+}
+:root[data-theme="light"] .evaluation-table th,
+:root[data-theme="light"] .evaluation-table td,
+:root[data-theme="light"] .evaluation-table-note { border-color: rgba(57,83,111,.1); }
+:root[data-theme="light"] .evaluation-metric-pill,
+:root[data-theme="light"] .delta-chip {
+  border-color: #e0e7ee;
+  background: #f5f8fb;
+}
+:root[data-theme="light"] .evaluation-metric-pill strong,
+:root[data-theme="light"] .delta-chip b { color: #304258; }
+:root[data-theme="light"] .evaluation-metric-pill b { color: #287b92; }
+:root[data-theme="light"] .evaluation-metric-pill.native b { color: #765fc0; }
