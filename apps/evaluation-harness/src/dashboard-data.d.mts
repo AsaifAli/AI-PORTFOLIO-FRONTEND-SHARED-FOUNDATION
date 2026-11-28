@@ -72,3 +72,8 @@ export function parseQuality(value: unknown): QualitySnapshot | null;
 export function parseActivity(value: unknown): ActivitySnapshot | null;
 export function parseRuntimeEvaluations(value: unknown): RuntimeEvaluation[] | null;
 export function parseExperimentComparisons(value: unknown): ExperimentComparisonSnapshot | null;
+
+export function filterRuntimeMetricSources(
+  row: Pick<RuntimeEvaluation, "frameworkMetrics" | "runtimeMetrics">,
+  source: string,
+): Pick<RuntimeEvaluation, "frameworkMetrics" | "runtimeMetrics">;
