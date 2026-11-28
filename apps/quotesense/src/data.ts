@@ -180,6 +180,18 @@ export const MAX_QUOTE_FILE_BYTES = 50 * 1024 * 1024;
 export const MAX_QUOTE_TOTAL_BYTES = 100 * 1024 * 1024;
 const SUPPORTED_QUOTE_EXTENSIONS = new Set(["pdf", "docx", "txt", "xlsx"]);
 
+export function mergeQuoteUploads<T extends { name: string; size: number; lastModified?: number }>(
+  current: T[],
+  incoming: T[],
+): T[] {
+  const unique = new Map<string, T>();
+  for (const file of [...current, ...incoming]) {
+    const key = `${file.name}:${file.size}:${file.lastModified ?? 0}`;
+    if (!unique.has(key)) unique.set(key, file);
+  }
+  return [...unique.values()];
+}
+
 export function validateQuoteUploads(
   files: Array<{ name: string; size: number }>,
 ): string | null {
@@ -348,6 +360,23 @@ export function getProcurementComparison(result: QuoteAnalysis) {
     });
   }
 
+  const scoreBySupplier = new Map(view.scores.map((score) => [
+    String(score.supplier || "").trim().toLowerCase(),
+    score,
+  ]));
+  for (const supplier of suppliers) {
+    const score = scoreBySupplier.get(String(supplier.supplier || "").trim().toLowerCase());
+    if (score) {
+      supplier.score = score.score;
+      supplier.cost_score = score.cost_score;
+      supplier.completeness_score = score.completeness_score;
+      supplier.timeline_score = score.timeline_score;
+      supplier.terms_score = score.terms_score;
+      supplier.risk_score = score.risk_score;
+      supplier.score_weights = score.weights;
+    }
+  }
+
   let lineItems = lineItemsFromApi;
   if (!lineItems.length) {
     const grouped = new Map<string, QuoteRecord>();
@@ -382,8 +411,25 @@ export function getProcurementComparison(result: QuoteAnalysis) {
           .map((item) => String(item.supplier || "Unknown supplier"))
           .filter((supplier) => !offered.has(supplier)),
         unit_price_comparable: offers.filter((offer) => scoreNumber(offer.unit_price) !== null).length >= 2
-          && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase()).filter(Boolean)).size === 1
+          && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+          && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
           && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1,
+        lowest_unit_price: (() => {
+          const values = offers.map((offer) => scoreNumber(offer.unit_price)).filter((value): value is number => value !== null);
+          const valid = offers.length >= 2
+            && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1;
+          return valid && values.length ? Math.min(...values) : null;
+        })(),
+        highest_unit_price: (() => {
+          const values = offers.map((offer) => scoreNumber(offer.unit_price)).filter((value): value is number => value !== null);
+          const valid = offers.length >= 2
+            && offers.filter((offer) => scoreNumber(offer.unit_price) !== null).every((offer) => Boolean(offer.unit) && Boolean(offer.currency))
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase())).size === 1
+            && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1;
+          return valid && values.length ? Math.max(...values) : null;
+        })(),
       };
     });
   }
