@@ -349,27 +349,38 @@ export function getProcurementComparison(result: QuoteAnalysis) {
         not_listed_by: suppliers
           .map((item) => String(item.supplier || "Unknown supplier"))
           .filter((supplier) => !offered.has(supplier)),
-        unit_price_comparable: offers.length >= 2
-          && new Set(offers.map((offer) => String(offer.unit || "").toLowerCase()).filter(Boolean)).size === 1
+        unit_price_comparable: offers.filter((offer) => scoreNumber(offer.unit_price) !== null).length >= 2
+          && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.unit || "").toLowerCase()).filter(Boolean)).size === 1
           && new Set(offers.filter((offer) => scoreNumber(offer.unit_price) !== null).map((offer) => String(offer.currency || "").toUpperCase())).size === 1,
       };
     });
   }
 
+  const knownCurrencies = new Set(suppliers
+    .filter((supplier) => scoreNumber(supplier.total_cost) !== null)
+    .map((supplier) => String(supplier.currency || "").trim().toUpperCase()));
+  const pricedCount = suppliers.filter((supplier) => scoreNumber(supplier.total_cost) !== null).length;
+  const fallbackComparable = pricedCount >= 2
+    && knownCurrencies.size === 1
+    && !knownCurrencies.has("");
   const currencyComparable = typeof matrix.cost_comparable === "boolean"
     ? matrix.cost_comparable
-    : view.scores.filter((score) => score.cost_comparable === true).length > 0;
+    : fallbackComparable;
+  const cheapest = currencyComparable
+    ? [...suppliers].filter((supplier) => scoreNumber(supplier.total_cost) !== null)
+      .sort((a, b) => (scoreNumber(a.total_cost) ?? Infinity) - (scoreNumber(b.total_cost) ?? Infinity))[0]
+    : undefined;
   return {
     suppliers,
     lineItems,
     pricing: pricingFromApi,
     currencyComparable,
-    currency: typeof matrix.currency === "string" ? matrix.currency : null,
+    currency: typeof matrix.currency === "string" ? matrix.currency : knownCurrencies.size === 1 ? [...knownCurrencies][0] : null,
     comparabilityReason: String(matrix.cost_comparability_reason || (currencyComparable
       ? "Supplier totals use a shared currency."
       : "Cost comparison is unavailable until at least two priced quotations with the same explicit currency are available.")),
-    lowestPriceSupplier: String(matrix.lowest_price_supplier || ""),
-    lowestPrice: scoreNumber(matrix.lowest_price),
+    lowestPriceSupplier: String(matrix.lowest_price_supplier || cheapest?.supplier || ""),
+    lowestPrice: scoreNumber(matrix.lowest_price) ?? scoreNumber(cheapest?.total_cost),
   };
 }
 
