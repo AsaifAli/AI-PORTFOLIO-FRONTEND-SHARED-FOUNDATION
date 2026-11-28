@@ -1,6 +1,7 @@
 import { Panel, StatusChip, Notice, Button } from "@portfolio/ui";
 import {
   asRecords,
+  getAnalysisView,
   getProcurementComparison,
   scoreNumber,
   type QuoteAnalysis,
@@ -34,6 +35,26 @@ export function ProcurementComparison({
   const suppliers = comparison.suppliers;
   const lineItems = comparison.lineItems;
   const pricing = comparison.pricing;
+  const analysisView = getAnalysisView(result);
+  const scoreRows = [
+    { label: "Cost", key: "cost_score", weight: "cost" },
+    { label: "Completeness", key: "completeness_score", weight: "completeness" },
+    { label: "Timeline", key: "timeline_score", weight: "timeline" },
+    { label: "Terms", key: "terms_score", weight: "terms" },
+    { label: "Risk", key: "risk_score", weight: "risk" },
+  ] as const;
+  const scoreMap = new Map(analysisView.scores.map((score) => [
+    String(score.supplier || "").trim().toLowerCase(),
+    score,
+  ]));
+  const formatComponent = (value: unknown) => {
+    const score = scoreNumber(value);
+    return score === null ? "Not scored" : `${score.toFixed(1)} / 100`;
+  };
+  const formatWeight = (value: unknown) => {
+    const weight = scoreNumber(value);
+    return weight === null ? "—" : `${(weight * 100).toFixed(0)}%`;
+  };
 
   const dimensions: Array<{ label: string; value: (supplier: QuoteRecord) => string }> = [
     { label: "Quoted total", value: (supplier) => displayAmount(supplier.total_cost, supplier.currency) },
@@ -105,6 +126,33 @@ export function ProcurementComparison({
           </table>
         </div>
         {suppliers.length < 2 ? <Notice tone="warning">Only one quotation was extracted. Upload another supplier quotation to make a meaningful comparison.</Notice> : null}
+      </Panel>
+
+      <Panel
+        title="Weighted decision scorecard"
+        detail="See which scoring dimensions drive each supplier's deterministic rank. Weights are normalized by the backend."
+      >
+        <div className="comparison-table-scroll">
+          <table className="data-table comparison-matrix">
+            <thead><tr>
+              <th>Scoring factor</th>
+              {suppliers.map((supplier, index) => <th key={`score-head-${String(supplier.supplier)}-${index}`}>
+                <strong>{String(supplier.supplier || `Supplier ${index + 1}`)}</strong>
+                <small>Overall {formatComponent(scoreMap.get(String(supplier.supplier || "").trim().toLowerCase())?.score)}</small>
+              </th>)}
+            </tr></thead>
+            <tbody>
+              {scoreRows.map((row) => <tr key={row.key}>
+                <th scope="row">{row.label}<small>Weight {formatWeight(analysisView.weights[row.weight])}</small></th>
+                {suppliers.map((supplier, index) => {
+                  const score = scoreMap.get(String(supplier.supplier || "").trim().toLowerCase());
+                  return <td key={`score-${row.key}-${index}`}>{formatComponent(score?.[row.key])}</td>;
+                })}
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+        <p className="comparison-footnote">A missing or incomparable component is omitted and the remaining available weights are re-normalized. Check the validation and source evidence before treating a small score difference as meaningful.</p>
       </Panel>
 
       <Panel
