@@ -6,15 +6,18 @@ import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, P
 import {
   createSampleProcessingTrace,
   createSampleQuoteAnalysis,
+  DEFAULT_SCORING_WEIGHTS,
   getAnalysisView,
   latestStageEvent,
   QUOTESENSE_PROCESSING_STAGES,
   scoreNumber,
+  toComparisonCsv,
   toSupplierCsv,
   validateQuoteUploads,
   type ProcessingStageEvent,
   type QuoteAnalysis,
 } from "./data";
+import { ProcurementComparison } from "./ProcurementComparison";
 import "@portfolio/ui/styles.css";
 import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
@@ -163,6 +166,7 @@ function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [query, setQuery] = useState("Compare these supplier quotations and identify commercial risks, missing terms, and the strongest evidence-backed option.");
   const [criteria, setCriteria] = useState<string[]>([...CRITERIA]);
+  const [scoringWeights, setScoringWeights] = useState<Record<string, number>>({ ...DEFAULT_SCORING_WEIGHTS });
   const [result, setResult] = useState<QuoteAnalysis | null>(null);
   const [tab, setTab] = useState<"summary" | "suppliers" | "evidence">("summary");
   const [busy, setBusy] = useState(false);
@@ -196,23 +200,31 @@ function App() {
   const completenessTone = view?.averageCompleteness === null || view?.averageCompleteness === undefined ? "neutral" : view.averageCompleteness >= 85 ? "good" : view.averageCompleteness >= 70 ? "warn" : "bad";
 
   function updateFiles(incoming: FileList | null) {
-    if (!incoming) return;
-    const next = Array.from(incoming);
-    const validation = validateQuoteUploads(next);
+    if (!incoming?.length) return;
+    const combined = [...files, ...Array.from(incoming)];
+    const unique = Array.from(new Map(
+      combined.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]),
+    ).values());
+    const validation = validateQuoteUploads(unique);
     if (validation) { setError(validation); return; }
-    setError(""); setFiles(next); setResult(null); setProcessingEvents([]); setDemoMode(false);
+    setError(""); setFiles(unique); setResult(null); setProcessingEvents([]); setDemoMode(false);
   }
 
   async function analyze(event: React.FormEvent) {
     event.preventDefault();
     if (!session.active || busy) return;
     if (!files.length) { setError("Add at least one supplier quotation before starting the analysis."); return; }
-    if (!criteria.length) { setError("Select at least one scoring criterion."); return; }
+    if (!criteria.length) { setError("Select at least one qualitative review focus."); return; }
+    if (!Object.values(scoringWeights).some((weight) => Number.isFinite(weight) && weight > 0)) {
+      setError("At least one deterministic scoring weight must be greater than zero.");
+      return;
+    }
     setBusy(true); setError(""); setNotice(""); setResult(null); setProcessingEvents([]); setDemoMode(false);
     const form = new FormData();
     files.forEach((file) => form.append("files", file, file.name));
     form.append("query", query);
     form.append("criteria", criteria.join(","));
+    form.append("weights", JSON.stringify(scoringWeights));
     try {
       const response = await api.stream<QuoteAnalysis>(
         "/api/v1/analyses/stream",
@@ -274,10 +286,15 @@ function App() {
           <div className="stack">
             <Panel title="New quotation analysis" detail="Upload supplier documents to begin a structured review." actions={<StatusChip label={health === "online" ? "API online" : health === "checking" ? "Checking API" : "API unavailable"} tone={health === "online" ? "good" : "warn"}/> }>
               <form onSubmit={(event) => void analyze(event)}>
-                <label className="file-drop quote-drop"><span className="file-drop-icon">＋</span><strong>{files.length ? `${files.length} file${files.length === 1 ? "" : "s"} ready` : "Drop quotation files here or browse"}</strong><small>PDF · DOCX · TXT · XLSX · up to 5 files · 50 MB each / 100 MB total</small><input type="file" multiple accept=".pdf,.docx,.txt,.xlsx" disabled={!session.active || busy} onChange={(event) => { updateFiles(event.target.files); event.currentTarget.value = ""; }}/></label>
+                <label className="file-drop quote-drop" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); updateFiles(event.dataTransfer.files); }}><span className="file-drop-icon">＋</span><strong>{files.length ? `${files.length} quotation file${files.length === 1 ? "" : "s"} selected · add more` : "Drop 2–5 supplier quotations here or browse"}</strong><small>PDF · DOCX · TXT · XLSX · 50 MB each / 100 MB combined · selecting again adds files</small><input type="file" multiple accept=".pdf,.docx,.txt,.xlsx" disabled={!session.active || busy} onChange={(event) => { updateFiles(event.target.files); event.currentTarget.value = ""; }}/></label>
                 {files.length ? <div className="selected-files">{files.map((file) => <div className="file-row" key={`${file.name}-${file.size}`}><span className="file-name">{file.name}</span><small>{(file.size / (1024 * 1024)).toFixed(1)} MB</small><button type="button" className="text-action danger-text" onClick={() => setFiles((current) => current.filter((item) => item !== file))}>Remove</button></div>)}</div> : null}
                 <Field label="Decision brief" hint="Describe the business context and what a reviewer should pay attention to."><textarea value={query} onChange={(event) => setQuery(event.target.value)} maxLength={4000} disabled={!session.active || busy}/></Field>
-                <div className="field criteria-field"><span className="field-label">Scoring criteria</span><div className="pill-list">{CRITERIA.map((item) => <button key={item} type="button" className={`pill ${criteria.includes(item) ? "selected" : ""}`} aria-pressed={criteria.includes(item)} onClick={() => setCriteria((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div><small>Scoring weights and comparability checks are applied by the backend's deterministic business rules.</small></div>
+                <div className="field criteria-field"><span className="field-label">Qualitative review focus</span><div className="pill-list">{CRITERIA.map((item) => <button key={item} type="button" className={`pill ${criteria.includes(item) ? "selected" : ""}`} aria-pressed={criteria.includes(item)} onClick={() => setCriteria((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div><small>These guide the model's written assessment. They do not change the deterministic score.</small></div>
+                <div className="field scoring-weight-editor">
+                  <div className="weight-editor-heading"><span className="field-label">Deterministic scoring weights</span><small>Set what matters most to this purchasing decision. The backend normalizes these values to 100%.</small></div>
+                  <div className="weight-editor-grid">{CRITERIA.map((item) => <label className="weight-control" key={item}><span>{item[0].toUpperCase() + item.slice(1)}</span><span className="weight-control-input"><input type="number" min="0" max="100" step="5" value={scoringWeights[item] ?? 0} disabled={!session.active || busy} onChange={(event) => setScoringWeights((current) => ({ ...current, [item]: Math.max(0, Math.min(100, Number(event.target.value) || 0)) }))}/><small>%</small></span></label>)}</div>
+                  <small className="weight-total">Entered weight total: {Object.values(scoringWeights).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)}% · normalized at analysis time</small>
+                </div>
                 <div className="analysis-submit"><Button variant="primary" type="submit" disabled={!session.active || busy || files.length === 0}>{busy ? <><span className="spinner dark-spinner"/> Analyzing documents…</> : "Analyze quotations ↗"}</Button><small>Model extraction is followed by schema validation and deterministic calculations.</small></div>
               </form>
             </Panel>
@@ -304,6 +321,8 @@ function App() {
             </Panel>
           </div>
         </div>
+
+        {result && view ? <ProcurementComparison result={result} onExport={() => downloadFile("quotesense-detailed-comparison.csv", "text/csv;charset=utf-8", toComparisonCsv(result))}/> : null}
 
         {result && view ? <section className="analysis-result-section">
           <div className="section-label"><span>02 / ANALYSIS DETAIL</span><small>Structured results · inspect before selecting a supplier</small></div>
