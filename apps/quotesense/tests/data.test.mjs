@@ -54,7 +54,7 @@ test("processing stage selection uses the latest real event for each stage", asy
   assert.equal(latestStageEvent(events, "extract")?.status, "started");
   assert.equal(latestStageEvent(events, "extract")?.message, "Reading second quotation.");
   assert.equal(latestStageEvent(events, "recommendation"), null);
-  assert.equal(QUOTESENSE_PROCESSING_STAGES.length, 8);
+  assert.equal(QUOTESENSE_PROCESSING_STAGES.length, 9);
 });
 
 test("sample walkthrough is explicitly synthetic and keeps deterministic ranking separate from recommendation", async () => {
@@ -118,7 +118,7 @@ test("builds a side-by-side procurement comparison and marks absent line items h
   assert.equal(comparison.suppliers.find((item) => item.supplier === "Beta")?.percent_above_lowest, 20);
   const printer = comparison.lineItems.find((item) => item.description === "Industrial printer");
   assert.equal(printer?.unit_price_comparable, true);
-  assert.equal(printer?.lowest_unit_price, undefined);
+  assert.equal(printer?.lowest_unit_price, 45);
   const installation = comparison.lineItems.find((item) => item.description === "Installation");
   assert.deepEqual(installation?.not_listed_by, ["Alpha"]);
   assert.equal(comparison.pricing[0]?.status, "matched");
