@@ -5,7 +5,8 @@ import { bootstrapSession, revokeSession, type SessionMetadata } from "@portfoli
 import { AppHeader, Button, EmptyState, Field, MetricCard, Notice, PageHeader, Panel, StatusChip } from "@portfolio/ui";
 import "@portfolio/ui/styles.css";
 import { initializeSharedAppTheme } from "@portfolio/ui/theme";
-import { buildRunCanvasSteps, type RunEvent } from "./run-canvas-model";
+import { buildRunCanvasActivity, buildRunCanvasSteps, buildRunCanvasSummary, type RunEvent } from "./run-canvas-model";
+import { filterRuns } from "./operations-model";
 import "./styles.css";
 
 initializeSharedAppTheme();
@@ -117,6 +118,9 @@ function RunCanvas({ run, events, loading, unavailable }: {
   unavailable: boolean;
 }) {
   const steps = useMemo(() => buildRunCanvasSteps(events), [events]);
+  const summary = useMemo(() => buildRunCanvasSummary(events), [events]);
+  const activity = useMemo(() => buildRunCanvasActivity(events), [events]);
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const waitingForReview = run.status === "awaiting_approval";
   const failed = run.status === "failed" || steps.some((step) => step.state === "failed");
   const active = isActive(run.status);
@@ -141,8 +145,13 @@ function RunCanvas({ run, events, loading, unavailable }: {
       <div><span className="eyebrow">LIVE RUN CANVAS</span><strong>Observed execution</strong></div>
       <StatusChip label={stateLabel} tone={waitingForReview ? "warn" : failed ? "bad" : active ? "good" : "neutral"}/>
     </div>
+    {events.length ? <div className="run-canvas-summary" aria-label="Execution summary" aria-live="polite">
+      <div><strong>{summary.totalStages ? summary.completedStages + "/" + summary.totalStages : "—"}</strong><span>{summary.failedStages ? summary.failedStages + " failed" : summary.runningStages ? summary.runningStages + " active" : "Stages complete"}</span></div>
+      <div><strong>{summary.measuredDurationMs.toLocaleString("en-IN")} ms</strong><span>Recorded stage time</span></div>
+      <div><strong>{summary.eventCount.toLocaleString("en-IN")}</strong><span>Recorded events</span></div>
+    </div> : null}
     {steps.length ? <ol className="run-canvas-steps" aria-live="polite">
-      {steps.map((step) => <li className={`run-canvas-step ${step.state}`} key={step.id}>
+      {steps.map((step) => <li className={"run-canvas-step " + step.state} key={step.id}>
         <span className="run-canvas-marker" aria-hidden="true">{step.state === "completed" ? "✓" : step.state === "failed" ? "!" : <span/>}</span>
         <div className="run-canvas-step-copy">
           <div className="run-canvas-step-top"><strong>{step.label}</strong><span>{step.state === "completed" ? "Complete" : step.state === "failed" ? "Failed" : "In progress"}</span></div>
@@ -158,10 +167,78 @@ function RunCanvas({ run, events, loading, unavailable }: {
       <span className="run-canvas-empty-mark" aria-hidden="true">◎</span>
       <div><strong>{emptyTraceTitle}</strong><p>{emptyTraceDetail}</p></div>
     </div>}
-    {waitingForReview ? <div className="run-canvas-review"><span className="run-canvas-review-mark" aria-hidden="true">Ⅱ</span><div><strong>Human review checkpoint</strong><p>The workflow has staged its proposal for review. Approval records a decision only; it does not send or publish anything.</p></div></div> : null}
+    {waitingForReview ? <div className="run-canvas-review"><span className="run-canvas-review-mark" aria-hidden="true">Ⅱ</span><div><strong>Human review checkpoint</strong><p>The workflow has staged its proposal for review. The approval queue below stays available for a decision. Approval records a decision only; it does not send or publish anything.</p></div></div> : null}
     {run.status === "completed" || run.status === "completed_with_warnings" ? <div className="run-canvas-result"><span aria-hidden="true">✓</span> Workflow execution recorded as {run.status.replace(/_/g, " ")}.</div> : null}
+    {activity.length ? <div className="run-canvas-activity">
+      <button type="button" className="run-canvas-activity-toggle" aria-expanded={activityExpanded} onClick={() => setActivityExpanded((value) => !value)}>
+        <span>Run activity <small>{activity.length} recorded events</small></span><span aria-hidden="true">{activityExpanded ? "−" : "+"}</span>
+      </button>
+      {activityExpanded ? <ol className="run-canvas-activity-list" aria-label="Recorded run activity">
+        {activity.map((item) => <li key={item.id} className={"run-canvas-activity-item " + item.tone}>
+          <span className="run-canvas-activity-dot" aria-hidden="true"/>
+          <strong>{item.label}</strong>
+          <time dateTime={item.createdAt}>{formatTime(item.createdAt)}</time>
+        </li>)}
+      </ol> : null}
+    </div> : null}
     <div className="run-canvas-footnote">Stage timing and status are sourced from the FlowPilot worker event log. No simulated progress is shown.</div>
   </section>;
+}
+
+function ApprovalQueue({ approvals, reviewNotes, setReviewNotes, onDecide, onInspect }: {
+  approvals: ApprovalRecord[];
+  reviewNotes: Record<string, string>;
+  setReviewNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onDecide: (approval: ApprovalRecord, decision: "approved" | "rejected", itemIndex?: number) => void;
+  onInspect: (approval: ApprovalRecord) => void;
+}) {
+  const pendingDecisions = approvals.reduce((total, item) => {
+    const items = asRecords(item.approval?.items);
+    if (item.workflow !== "content") return total + 1;
+    return total + items.filter((entry) => !["approved", "rejected"].includes(String(entry.approval_status || "pending"))).length;
+  }, 0);
+
+  return <>
+    <div className="approval-queue-summary">
+      <div><strong>{approvals.length}</strong><span>Workflows awaiting review</span></div>
+      <div><strong>{pendingDecisions}</strong><span>Decisions outstanding</span></div>
+    </div>
+    {approvals.length ? <div className="approval-list">{approvals.map((item) => {
+      const detail = item.approval ?? {};
+      const items = asRecords(detail.items);
+      const isContent = item.workflow === "content";
+      const approved = items.filter((entry) => entry.approval_status === "approved").length;
+      const rejected = items.filter((entry) => entry.approval_status === "rejected").length;
+      const pending = isContent ? Math.max(0, items.length - approved - rejected) : 1;
+      return <article className="approval-card" key={item.run_id + "-" + item.workflow}>
+        <div className="approval-card-head">
+          <div><span className="eyebrow">{item.workflow.toUpperCase()} / REVIEW REQUIRED</span><h3>{textValue(detail.title, WORKFLOW_INFO[item.workflow as WorkflowName]?.title || "Workflow approval")}</h3><p>{textValue(detail.summary, "Review the staged output before authorizing it.")}</p></div>
+          <StatusChip label={pending + (pending === 1 ? " decision pending" : " decisions pending")} tone="warn"/>
+        </div>
+        <div className="approval-run-ref"><small>Run {item.run_id.slice(0, 12)}</small><Button variant="quiet" onClick={() => onInspect(item)}>Inspect run ↗</Button></div>
+        {isContent ? <>
+          <div className="approval-progress"><span>{approved} approved</span><span>{rejected} rejected</span><span>{pending} pending</span></div>
+          {items.map((draft, index) => {
+            const status = String(draft.approval_status || "pending");
+            const key = item.run_id + ":" + index;
+            return <div className="approval-item" key={key}>
+              <div className="approval-item-head"><div><strong>Draft {index + 1} · {textValue(draft.channel, "Channel")}</strong><small>{textValue(draft.topic, "Content draft")}</small></div><StatusChip label={status} tone={status === "approved" ? "good" : status === "rejected" ? "bad" : "warn"}/></div>
+              <p>{textValue(draft.draft, "No draft text returned.")}</p>
+              {status === "pending" ? <>
+                <Field label="Reviewer note"><input value={reviewNotes[key] || ""} maxLength={1000} onChange={(event) => setReviewNotes((current) => ({ ...current, [key]: event.target.value }))} placeholder="Optional reasoning for the audit trail"/></Field>
+                <div className="approval-actions"><Button variant="primary" onClick={() => onDecide(item, "approved", index)}>Approve this draft</Button><Button variant="danger" onClick={() => onDecide(item, "rejected", index)}>Reject this draft</Button></div>
+              </> : null}
+              {status !== "pending" && draft.note ? <small>Reviewer note: {String(draft.note)}</small> : null}
+            </div>;
+          })}
+        </> : <>
+          {items.map((entry, index) => <div className="approval-item" key={index}><strong>{textValue(entry.name, "Proposed recipient / action")}</strong><p>{textValue(entry.message, "No message preview was returned.")}</p><small>{textValue(entry.reason, "")}</small></div>)}
+          <Field label="Reviewer note"><input value={reviewNotes[item.run_id + ":all"] || ""} maxLength={1000} onChange={(event) => setReviewNotes((current) => ({ ...current, [item.run_id + ":all"]: event.target.value }))}/></Field>
+          <div className="approval-actions"><Button variant="primary" onClick={() => onDecide(item, "approved")}>Approve action</Button><Button variant="danger" onClick={() => onDecide(item, "rejected")}>Reject action</Button></div>
+        </>}
+      </article>;
+    })}</div> : <EmptyState title="No pending approvals" body="Review requests will appear here as soon as a workflow reaches its human checkpoint. You do not need to switch tabs to find them."/>}
+  </>;
 }
 
 function App() {
@@ -179,13 +256,14 @@ function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
-  const [tab, setTab] = useState<"runs" | "approvals">("runs");
+  const [runSearch, setRunSearch] = useState("");
+  const [runStatusFilter, setRunStatusFilter] = useState("all");
   const [apiHealthy, setApiHealthy] = useState(false);
 
   const refresh = useCallback(async () => {
     const [workflowData, runData, approvalData] = await Promise.all([
       api.get<{ workflows?: WorkflowRecord[] }>("/api/v1/workflows"),
-      api.get<{ runs?: RunRecord[] }>("/api/v1/runs?limit=30"),
+      api.get<{ runs?: RunRecord[] }>("/api/v1/runs?limit=100"),
       api.get<{ approvals?: ApprovalRecord[] }>("/api/v1/approvals?limit=50"),
     ]);
     setWorkflows(Array.isArray(workflowData.workflows) ? workflowData.workflows : []);
@@ -256,6 +334,10 @@ function App() {
     return () => window.clearInterval(timer);
   }, [session.active, hasActiveRun, refresh]);
 
+  const filteredRuns = useMemo(
+    () => filterRuns(runs, runSearch, runStatusFilter),
+    [runs, runSearch, runStatusFilter]
+  );
   const totalQueued = runs.filter((run) => ["queued", "pending"].includes(run.status)).length;
   const totalRunning = runs.filter((run) => ["running", "paused"].includes(run.status)).length;
 
@@ -266,7 +348,6 @@ function App() {
       const result = await api.post<RunRecord>("/api/v1/runs", { workflow, payload });
       setSelectedRun(result);
       setNotice(`Run ${result.run_id.slice(0, 8)} accepted by the FlowPilot control plane.`);
-      setTab("runs");
       await refresh();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "The workflow could not be queued."); }
     finally { setBusy(false); }
@@ -296,6 +377,18 @@ function App() {
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Approval decision could not be recorded."); }
   }
 
+  function inspectApprovalRun(approval: ApprovalRecord) {
+    const run = runs.find((item) => item.run_id === approval.run_id);
+    if (!run) {
+      setError("This approval's run is not in the current history. Refresh the workspace and try again.");
+      return;
+    }
+    setSelectedRun(run);
+    setError("");
+    setNotice("Inspecting run " + run.run_id.slice(0, 8) + " in the selected-run panel.");
+    document.getElementById("selected-run-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   async function endSession() {
     try { await revokeSession("/api/workspace/apps/flowpilot/session/revoke"); setSession({ active: false }); setRuns([]); setApprovals([]); setSelectedRun(null); setRunEvents([]); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not end the session."); }
@@ -319,26 +412,42 @@ function App() {
           <div className="workflow-form-heading"><div><span className="eyebrow">{workflow.toUpperCase()} / CONFIGURATION</span><h3>{WORKFLOW_INFO[workflow].title}</h3><p>{WORKFLOW_INFO[workflow].description}</p></div></div>
           <WorkflowForm key={workflow} workflow={workflow} onSubmit={(payload) => void startRun(payload)} busy={busy}/>
         </Panel>
-        <div className="stack">
+        <div className="stack" id="selected-run-panel">
           <Panel title="Selected run" detail={selectedRun ? `Reference ${selectedRun.run_id}` : "Choose a run to inspect its output and evidence."}>
-            {selectedRun ? <><div className="selected-run-head"><StatusChip label={selectedRun.status.replace(/_/g, " ")} tone={selectedRun.status === "failed" ? "bad" : isActive(selectedRun.status) || selectedRun.status === "awaiting_approval" ? "warn" : "good"}/><span>{WORKFLOW_INFO[selectedRun.workflow as WorkflowName]?.title || selectedRun.workflow}</span></div><div className="run-meta"><div><small>Started</small><strong>{formatTime(selectedRun.created_at)}</strong></div><div><small>Duration</small><strong>{selectedRun.duration_ms === undefined ? "In progress" : `${selectedRun.duration_ms} ms`}</strong></div><div><small>Usage</small><strong>{textValue(selectedRun.usage?.total_tokens, "Not recorded")} tokens</strong></div></div><RunCanvas run={selectedRun} events={runEvents} loading={runEventsLoading} unavailable={runEventsUnavailable}/><OutputPreview run={selectedRun}/>{selectedRun.evidence?.length ? <div className="evidence-list">{selectedRun.evidence.slice(0, 4).map((item, index) => <div className="source-card" key={index}><strong>{textValue(item.title, "Execution evidence")}</strong><p>{textValue(item.detail)}</p></div>)}</div> : null}<div className="run-controls">{selectedRun.status === "running" || selectedRun.status === "queued" ? <><Button onClick={() => void controlRun(selectedRun, "pause")}>Pause</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}{selectedRun.status === "paused" ? <><Button variant="primary" onClick={() => void controlRun(selectedRun, "resume")}>Resume</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}</div></> : <EmptyState title="No run selected" body="Queue a workflow or select a run in the run history to inspect the result."/>}
+            {selectedRun ? <><div className="selected-run-head"><StatusChip label={selectedRun.status.replace(/_/g, " ")} tone={selectedRun.status === "failed" ? "bad" : isActive(selectedRun.status) || selectedRun.status === "awaiting_approval" ? "warn" : "good"}/><span>{WORKFLOW_INFO[selectedRun.workflow as WorkflowName]?.title || selectedRun.workflow}</span></div><div className="run-meta"><div><small>Started</small><strong>{formatTime(selectedRun.created_at)}</strong></div><div><small>Duration</small><strong>{selectedRun.duration_ms === undefined ? "In progress" : `${selectedRun.duration_ms} ms`}</strong></div><div><small>Usage</small><strong>{textValue(selectedRun.usage?.total_tokens, "Not recorded")} tokens</strong></div></div><RunCanvas key={selectedRun.run_id} run={selectedRun} events={runEvents} loading={runEventsLoading} unavailable={runEventsUnavailable}/><OutputPreview run={selectedRun}/>{selectedRun.evidence?.length ? <div className="evidence-list">{selectedRun.evidence.slice(0, 4).map((item, index) => <div className="source-card" key={index}><strong>{textValue(item.title, "Execution evidence")}</strong><p>{textValue(item.detail)}</p></div>)}</div> : null}<div className="run-controls">{selectedRun.status === "running" || selectedRun.status === "queued" ? <><Button onClick={() => void controlRun(selectedRun, "pause")}>Pause</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}{selectedRun.status === "paused" ? <><Button variant="primary" onClick={() => void controlRun(selectedRun, "resume")}>Resume</Button><Button variant="danger" onClick={() => void controlRun(selectedRun, "stop")}>Stop run</Button></> : null}</div></> : <EmptyState title="No run selected" body="Queue a workflow or select a run in the run history to inspect the result."/>}
           </Panel>
         </div>
       </div>
 
       <section className="run-section">
-        <div className="section-label"><span>02 / OPERATIONS & REVIEW</span><small>Refreshes every four seconds while jobs are active</small></div>
-        <Panel>
-          <div className="tabs" role="tablist" aria-label="Run history and approval inbox"><button className="tab" role="tab" aria-selected={tab === "runs"} onClick={() => setTab("runs")}>Run history <span>{runs.length}</span></button><button className="tab" role="tab" aria-selected={tab === "approvals"} onClick={() => setTab("approvals")}>Approval inbox <span>{approvals.length}</span></button><Button variant="quiet" onClick={() => void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Refresh failed."))}>Refresh ↻</Button></div>
-          {tab === "runs" ? <div className="run-list">{runs.length ? runs.map((run) => <button className={`run-row ${selectedRun?.run_id === run.run_id ? "active" : ""}`} key={run.run_id} onClick={() => setSelectedRun(run)}><div className="run-row-main"><strong>{WORKFLOW_INFO[run.workflow as WorkflowName]?.title || run.workflow}</strong><small>{run.run_id.slice(0, 12)} · {formatTime(run.created_at)}</small></div><StatusChip label={run.status.replace(/_/g, " ")} tone={run.status === "failed" ? "bad" : isActive(run.status) || run.status === "awaiting_approval" ? "warn" : "good"}/><span className="run-row-chevron">↗</span></button>) : <EmptyState title="No workflow runs yet" body="Queue a workflow above. Its status and run reference will appear here."/>}</div> : <div className="approval-list">{approvals.length ? approvals.map((item) => {
-            const detail = item.approval ?? {};
-            const items = asRecords(detail.items);
-            const isContent = item.workflow === "content";
-            const approved = items.filter((entry) => entry.approval_status === "approved").length;
-            const rejected = items.filter((entry) => entry.approval_status === "rejected").length;
-            return <article className="approval-card" key={`${item.run_id}-${item.workflow}`}><div className="approval-card-head"><div><span className="eyebrow">{item.workflow.toUpperCase()} / REVIEW REQUIRED</span><h3>{textValue(detail.title, WORKFLOW_INFO[item.workflow as WorkflowName]?.title || "Workflow approval")}</h3><p>{textValue(detail.summary, "Review the staged output before authorizing it.")}</p></div><StatusChip label={isContent ? `${items.length - approved - rejected} awaiting` : "Action review"} tone="warn"/></div>{isContent ? <><div className="approval-progress"><span>{approved} approved</span><span>{rejected} rejected</span><span>{Math.max(0, items.length - approved - rejected)} pending</span></div>{items.map((draft, index) => { const status = String(draft.approval_status || "pending"); const key = `${item.run_id}:${index}`; return <div className="approval-item" key={key}><div className="approval-item-head"><div><strong>Draft {index + 1} · {textValue(draft.channel, "Channel")} </strong><small>{textValue(draft.topic, "Content draft")}</small></div><StatusChip label={status} tone={status === "approved" ? "good" : status === "rejected" ? "bad" : "warn"}/></div><p>{textValue(draft.draft, "No draft text returned.")}</p>{status === "pending" ? <><Field label="Reviewer note"><input value={reviewNotes[key] || ""} maxLength={1000} onChange={(event) => setReviewNotes((current) => ({ ...current, [key]: event.target.value }))} placeholder="Optional reasoning for the audit trail"/></Field><div className="approval-actions"><Button variant="primary" onClick={() => void decideApproval(item, "approved", index)}>Approve this draft</Button><Button variant="danger" onClick={() => void decideApproval(item, "rejected", index)}>Reject this draft</Button></div></> : null}{status !== "pending" && draft.note ? <small>Reviewer note: {String(draft.note)}</small> : null}</div>; })}</> : <>{items.map((entry, index) => <div className="approval-item" key={index}><strong>{textValue(entry.name, "Proposed recipient / action")}</strong><p>{textValue(entry.message, "No message preview was returned.")}</p><small>{textValue(entry.reason, "")}</small></div>)}<Field label="Reviewer note"><input value={reviewNotes[`${item.run_id}:all`] || ""} maxLength={1000} onChange={(event) => setReviewNotes((current) => ({ ...current, [`${item.run_id}:all`]: event.target.value }))}/></Field><div className="approval-actions"><Button variant="primary" onClick={() => void decideApproval(item, "approved")}>Approve action</Button><Button variant="danger" onClick={() => void decideApproval(item, "rejected")}>Reject action</Button></div></>}</article>;
-          }) : <EmptyState title="No pending approvals" body="Content and outreach proposals appear here after the workflow reaches its human-review checkpoint."/>}</div>}
-        </Panel>
+        <div className="section-label"><span>02 / OPERATIONS & REVIEW</span><div className="operations-header-actions"><small>Refreshes every four seconds while jobs are active</small><Button variant="quiet" onClick={() => void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Refresh failed."))}>Refresh ↻</Button></div></div>
+        <div className="operations-grid">
+          <Panel title="Run history" detail={filteredRuns.length + " of " + runs.length + " tracked runs · newest first"}>
+            <div className="run-history-filters">
+              <Field label="Search runs"><input type="search" value={runSearch} onChange={(event) => setRunSearch(event.target.value)} placeholder="Workflow or run reference"/></Field>
+              <Field label="Status"><select value={runStatusFilter} onChange={(event) => setRunStatusFilter(event.target.value)}>
+                <option value="all">All statuses</option>
+                <option value="queued">Queued</option>
+                <option value="pending">Pending</option>
+                <option value="running">Running</option>
+                <option value="paused">Paused</option>
+                <option value="awaiting_approval">Awaiting approval</option>
+                <option value="completed">Completed</option>
+                <option value="completed_with_warnings">Completed with warnings</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select></Field>
+            </div>
+            <div className="run-list">{filteredRuns.length ? filteredRuns.map((run) => <button className={"run-row " + (selectedRun?.run_id === run.run_id ? "active" : "")} key={run.run_id} onClick={() => setSelectedRun(run)}>
+              <div className="run-row-main"><strong>{WORKFLOW_INFO[run.workflow as WorkflowName]?.title || run.workflow}</strong><small>{run.run_id.slice(0, 12)} · {formatTime(run.created_at)}</small></div>
+              <StatusChip label={run.status.replace(/_/g, " ")} tone={run.status === "failed" ? "bad" : isActive(run.status) || run.status === "awaiting_approval" ? "warn" : "good"}/>
+              <span className="run-row-chevron">↗</span>
+            </button>) : <EmptyState title={runs.length ? "No matching runs" : "No workflow runs yet"} body={runs.length ? "Change the search or status filter to see more runs." : "Queue a workflow above. Its status and run reference will appear here."}/>}</div>
+          </Panel>
+          <Panel title="Approval queue" detail="Always visible · human decisions stay in the flow">
+            <ApprovalQueue approvals={approvals} reviewNotes={reviewNotes} setReviewNotes={setReviewNotes} onDecide={(item, decision, itemIndex) => void decideApproval(item, decision, itemIndex)} onInspect={inspectApprovalRun}/>
+          </Panel>
+        </div>
       </section>
       <footer className="product-footnote">Approval records authorization only. This demonstration has no connected publish or send action; no external content is published and no message is sent.</footer>
     </main>
