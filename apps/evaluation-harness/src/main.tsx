@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Panel, StatusChip } from "@portfolio/ui";
 import { loadDashboardSnapshot, loadExperimentComparison, type DashboardSnapshot } from "./api";
+import { filterRuntimeMetricSources } from "./dashboard-data.mjs";
 import type { EvaluationMetricValue, EvaluationProjectSlug, ExperimentComparison, RuntimeEvaluation } from "./dashboard-data.mjs";
+import { formatMetricDelta, formatMetricValue } from "./metric-presentation.mjs";
 import "@portfolio/ui/styles.css";
 import { initializeSharedAppTheme } from "@portfolio/ui/theme";
 import "./styles.css";
@@ -178,23 +180,6 @@ const runtimeLabels: Record<string, string> = {
   "runtime.warning_count": "Workflow warnings",
 };
 
-const countMetricNames = new Set([
-  "evidence.verified_count", "evidence.proposed_count", "retrieval.chunk_count",
-  "retrieval.graph_expanded_chunk_count", "retrieval.web_source_count",
-  "procurement.document_count", "procurement.quote_count",
-  "runtime.guardrail_finding_count", "runtime.risk_finding_count",
-  "runtime.price_anomaly_count", "runtime.warning_count",
-]);
-const binaryMetricNames = new Set([
-  "runtime.grounding_verified", "runtime.grounding_partial",
-  "runtime.trust_verified", "runtime.trust_review_required",
-  "runtime.security_blocked", "runtime.abstained",
-  "runtime.numeric_claims_supported", "runtime.guardrail_blocked",
-  "runtime.cost_comparability", "runtime.analysis_available",
-  "runtime.recommendation_available", "runtime.validation_completed",
-  "runtime.approval_pending", "runtime.audit_traceability",
-]);
-
 function displayProject(project: EvaluationProjectSlug): string {
   return project === "evidenceflow" ? "EvidenceFlow" : project === "quotesense" ? "QuoteSense" : "FlowPilot";
 }
@@ -209,19 +194,11 @@ function displayMetric(key: string): string {
 }
 
 function displayValue(key: string, value: EvaluationMetricValue, external = false): string {
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (external) return percent(value);
-  if (countMetricNames.has(key)) return Number.isInteger(value) ? String(value) : value.toFixed(2);
-  if (binaryMetricNames.has(key)) return value >= 0.5 ? "Yes" : "No";
-  if (/(coverage|completeness|rate|accuracy|compliance|verified|completion|precision|recall|relevancy|relevance|grounding|f1|comparability|integrity|supported|traceability)/i.test(key) && value >= 0 && value <= 1) {
-    return percent(value);
-  }
-  return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  return formatMetricValue(key, value, external);
 }
 
 function displayDelta(key: string, value: number): string {
-  const sign = value > 0 ? "+" : "";
-  return countMetricNames.has(key) ? sign + String(value) : sign + (value * 100).toFixed(1) + " pp";
+  return formatMetricDelta(key, value);
 }
 
 function versionParts(value: ExperimentComparison["lineage"]) {
@@ -250,6 +227,56 @@ function MetricPills({ metrics, external = false }: {
   );
 }
 
+function RuntimeProjectEvidence({ rows }: { rows: RuntimeEvaluation[] | null }) {
+  const projects: EvaluationProjectSlug[] = ["evidenceflow", "quotesense", "flowpilot"];
+  return (
+    <div className="runtime-project-grid">
+      {projects.map((project) => {
+        const events = (rows ?? []).filter((row) => row.project === project);
+        return (
+          <Panel className={"runtime-project-card " + project} key={project}>
+            <div className="runtime-project-heading">
+              <div><span className="application-kicker">LATEST RUNTIME EVIDENCE</span><h3>{displayProject(project)}</h3></div>
+              <span className="runtime-project-count">{events.length} event{events.length === 1 ? "" : "s"}</span>
+            </div>
+            {events.length ? events.map((row, index) => (
+              <article className="runtime-project-event" key={project + "-" + row.createdAt + "-" + index}>
+                <div className="runtime-project-event-head">
+                  <strong>{timestamp(row.createdAt)}</strong>
+                  <StatusChip label={row.status} tone={row.status === "failed" ? "bad" : row.status === "warning" ? "warn" : "good"}/>
+                </div>
+                <div className="runtime-project-lineage">
+                  {row.experimentId ? <span><b>Experiment</b>{row.experimentId}</span> : null}
+                  {row.modelVersion ? <span><b>Model</b>{row.modelVersion}</span> : null}
+                  {row.datasetVersion ? <span><b>Dataset</b>{row.datasetVersion}</span> : null}
+                  {row.promptVersion ? <span><b>Prompt</b>{row.promptVersion}</span> : null}
+                  {row.configVersion ? <span><b>Config</b>{row.configVersion}</span> : null}
+                  {!row.experimentId && !row.modelVersion && !row.datasetVersion && !row.promptVersion && !row.configVersion
+                    ? <span>Version lineage not supplied</span> : null}
+                </div>
+                <div className="runtime-project-metric-groups">
+                  <section className="runtime-project-metric-group">
+                    <h4>Framework scores</h4>
+                    <MetricPills metrics={row.frameworkMetrics} external/>
+                  </section>
+                  <section className="runtime-project-metric-group">
+                    <h4>Runtime / domain checks</h4>
+                    <MetricPills metrics={row.runtimeMetrics}/>
+                  </section>
+                </div>
+              </article>
+            )) : (
+              <p className="runtime-project-empty">
+                {rows === null ? "Live runtime data is temporarily unavailable." : "No runtime evaluation event has been reported yet. Missing metrics are not zero scores."}
+              </p>
+            )}
+          </Panel>
+        );
+      })}
+    </div>
+  );
+}
+
 function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) {
   const [projectFilter, setProjectFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -257,9 +284,8 @@ function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) 
 
   const filtered = useMemo(() => (rows ?? []).filter((row) => {
     if (projectFilter !== "all" && row.project !== projectFilter) return false;
-    const frameworks = Object.keys(row.frameworkMetrics).map((key) => key.split(".")[1]);
-    if (sourceFilter === "native" && !Object.keys(row.runtimeMetrics).length) return false;
-    if (sourceFilter !== "all" && sourceFilter !== "native" && !frameworks.includes(sourceFilter)) return false;
+    const visibleMetrics = filterRuntimeMetricSources(row, sourceFilter);
+    if (sourceFilter !== "all" && !Object.keys(visibleMetrics.frameworkMetrics).length && !Object.keys(visibleMetrics.runtimeMetrics).length) return false;
     const term = search.trim().toLowerCase();
     if (term) {
       const searchable = [
@@ -273,6 +299,8 @@ function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) 
   }), [rows, projectFilter, sourceFilter, search]);
 
   return (
+    <>
+    <RuntimeProjectEvidence rows={rows}/>
     <Panel className="evaluation-table-panel">
       <div className="evaluation-controls">
         <label><span>Project</span>
@@ -299,7 +327,9 @@ function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) 
         <table className="evaluation-table">
           <thead><tr><th>Time</th><th>Project</th><th>Experiment / lineage</th><th>Framework scores</th><th>Runtime / domain checks</th></tr></thead>
           <tbody>
-            {filtered.length ? filtered.slice(0, 100).map((row, index) => (
+            {filtered.length ? filtered.slice(0, 100).map((row, index) => {
+              const visibleMetrics = filterRuntimeMetricSources(row, sourceFilter);
+              return (
               <tr key={row.project + "-" + row.createdAt + "-" + (row.experimentId || index)}>
                 <td className="evaluation-time">{timestamp(row.createdAt)}</td>
                 <td><strong>{displayProject(row.project)}</strong><div className="evaluation-subtle">{row.status}</div></td>
@@ -314,10 +344,11 @@ function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) 
                   {!row.experimentId && !row.modelVersion && !row.datasetVersion && !row.promptVersion && !row.configVersion
                     ? <span>Version lineage not supplied</span> : null}
                 </div></td>
-                <td><MetricPills metrics={row.frameworkMetrics} external/></td>
-                <td><MetricPills metrics={row.runtimeMetrics}/></td>
+                <td><MetricPills metrics={visibleMetrics.frameworkMetrics} external/></td>
+                <td><MetricPills metrics={visibleMetrics.runtimeMetrics}/></td>
               </tr>
-            )) : (
+              );
+            }) : (
               <tr><td colSpan={5} className="evaluation-empty-row">
                 {rows === null ? "Live evaluation data is temporarily unavailable." : "No live evaluations match these filters. Missing scores are not zero scores."}
               </td></tr>
@@ -327,6 +358,7 @@ function RuntimeEvaluationPanel({ rows }: { rows: RuntimeEvaluation[] | null }) 
       </div>
       <p className="evaluation-table-note">External evaluator results appear only when a configured framework actually reports a score. Product-generated signals remain separate from framework scores.</p>
     </Panel>
+    </>
   );
 }
 
