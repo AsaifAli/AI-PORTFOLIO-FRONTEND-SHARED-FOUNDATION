@@ -91,6 +91,10 @@ function formatStageMetrics(event: ProcessingStageEvent | null): string {
     const anomalies = metric("price_anomaly_count");
     if (risks !== null) parts.push(`${risks} risk findings`);
     if (anomalies !== null) parts.push(`${anomalies} price anomalies`);
+  } else if (event.stage === "market_research") {
+    const count = metric("result_count");
+    if (count !== null) parts.push(`${count} external source${count === 1 ? "" : "s"}`);
+    if (event.metrics?.available === false) parts.push("provider unavailable");
   } else if (event.stage === "complete") {
     const quotes = metric("quotation_count");
     const risks = metric("risk_finding_count");
@@ -104,10 +108,12 @@ function ProcessingJourney({
   events,
   busy,
   example,
+  marketEnabled = false,
 }: {
   events: ProcessingStageEvent[];
   busy: boolean;
   example: boolean;
+  marketEnabled?: boolean;
 }) {
   return (
     <Panel
@@ -121,7 +127,7 @@ function ProcessingJourney({
       actions={<StatusChip label={example ? "Synthetic example" : busy ? "Live analysis" : "Run trace"} tone={example ? "neutral" : busy ? "warn" : "good"}/>}
     >
       <ol className="journey-list" aria-live={busy ? "polite" : "off"}>
-        {QUOTESENSE_PROCESSING_STAGES.map((stage, index) => {
+        {QUOTESENSE_PROCESSING_STAGES.filter((stage) => stage.id !== "market_research" || marketEnabled).map((stage, index) => {
           const event = latestStageEvent(events, stage.id);
           const status = example ? "example" : event?.status || "pending";
           const statusLabel = status === "example" ? "Example"
@@ -168,6 +174,8 @@ function App() {
   const [query, setQuery] = useState("Compare these supplier quotations and identify commercial risks, missing terms, and the strongest evidence-backed option.");
   const [criteria, setCriteria] = useState<string[]>([...CRITERIA]);
   const [scoringWeights, setScoringWeights] = useState<Record<string, number>>({ ...DEFAULT_SCORING_WEIGHTS });
+  const [doMarketResearch, setDoMarketResearch] = useState(false);
+  const [marketScope, setMarketScope] = useState("");
   const [result, setResult] = useState<QuoteAnalysis | null>(null);
   const [tab, setTab] = useState<"summary" | "suppliers" | "evidence">("summary");
   const [busy, setBusy] = useState(false);
@@ -217,12 +225,18 @@ function App() {
       setError("At least one deterministic scoring weight must be greater than zero.");
       return;
     }
+    if (doMarketResearch && !marketScope.trim()) {
+      setError("Enter a non-confidential product or service category for market context.");
+      return;
+    }
     setBusy(true); setError(""); setNotice(""); setResult(null); setProcessingEvents([]); setDemoMode(false);
     const form = new FormData();
     files.forEach((file) => form.append("files", file, file.name));
     form.append("query", query);
     form.append("criteria", criteria.join(","));
     form.append("weights", JSON.stringify(scoringWeights));
+    form.append("do_market", doMarketResearch ? "true" : "false");
+    if (doMarketResearch) form.append("market_query", marketScope.trim());
     try {
       const response = await api.stream<QuoteAnalysis>(
         "/api/v1/analyses/stream",
@@ -278,7 +292,7 @@ function App() {
         {notice ? <Notice tone="success">{notice}</Notice> : null}
         {demoMode ? <Notice tone="info">Synthetic walkthrough: these supplier records and scores are illustrative. No quotation files were uploaded and no live model analysis was run.</Notice> : null}
 
-        {(busy || processingEvents.length > 0 || demoMode) ? <ProcessingJourney events={processingEvents} busy={busy} example={demoMode}/> : null}
+        {(busy || processingEvents.length > 0 || demoMode) ? <ProcessingJourney events={processingEvents} busy={busy} example={demoMode} marketEnabled={doMarketResearch || Boolean(result?.market)}/> : null}
 
         <div className="grid quotesense-grid">
           <div className="stack">
@@ -292,6 +306,13 @@ function App() {
                   <div className="weight-editor-heading"><span className="field-label">Deterministic scoring weights</span><small>Set what matters most to this purchasing decision. The backend normalizes these values to 100%.</small></div>
                   <div className="weight-editor-grid">{CRITERIA.map((item) => <label className="weight-control" key={item}><span>{item[0].toUpperCase() + item.slice(1)}</span><span className="weight-control-input"><input type="number" min="0" max="100" step="5" value={scoringWeights[item] ?? 0} disabled={!session.active || busy} onChange={(event) => setScoringWeights((current) => ({ ...current, [item]: Math.max(0, Math.min(100, Number(event.target.value) || 0)) }))}/><small>%</small></span></label>)}</div>
                   <small className="weight-total">Entered weight total: {Object.values(scoringWeights).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)}% · normalized at analysis time</small>
+                </div>
+                <div className="field market-context-field">
+                  <label className="market-toggle">
+                    <input type="checkbox" checked={doMarketResearch} disabled={!session.active || busy} onChange={(event) => setDoMarketResearch(event.target.checked)}/>
+                    <span><strong>Include optional market context</strong><small>Search public web sources for category-level context. This is separate from the supplier comparison.</small></span>
+                  </label>
+                  {doMarketResearch ? <Field label="Product or service category" hint="Use a general, non-confidential phrase. Uploaded documents and their contents are not sent to the market search provider."><input value={marketScope} maxLength={500} placeholder="e.g. commercial office chairs and height-adjustable desks" onChange={(event) => setMarketScope(event.target.value)} disabled={!session.active || busy}/></Field> : null}
                 </div>
                 <div className="analysis-submit"><Button variant="primary" type="submit" disabled={!session.active || busy || files.length === 0}>{busy ? <><span className="spinner dark-spinner"/> Analyzing documents…</> : "Analyze quotations ↗"}</Button><small>Model extraction is followed by schema validation and deterministic calculations.</small></div>
               </form>
