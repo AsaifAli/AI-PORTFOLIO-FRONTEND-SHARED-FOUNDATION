@@ -150,3 +150,26 @@ test("sample procurement comparison includes itemized scope, commercial terms an
   assert.equal(comparison.currencyComparable, true);
   assert.ok(comparison.suppliers.some((supplier) => supplier.warranty === "24 months"));
 });
+
+
+test("merges quotation files across separate selections without losing prior choices", async () => {
+  const { mergeQuoteUploads } = await import("../src/data.ts");
+  const first = { name: "alpha.pdf", size: 100, lastModified: 1 };
+  const duplicate = { name: "alpha.pdf", size: 100, lastModified: 1 };
+  const second = { name: "beta.pdf", size: 200, lastModified: 2 };
+  assert.deepEqual(mergeQuoteUploads([first], [duplicate, second]), [first, second]);
+});
+
+test("fallback item comparison computes unit-price ranges only when currency and units match", () => {
+  const comparison = getProcurementComparison({
+    quotations: [
+      { supplier: "Alpha", currency: "INR", total_cost: 100, line_items: [{ description: "Cable", unit: "metre", unit_price: 10 }] },
+      { supplier: "Beta", currency: "INR", total_cost: 110, line_items: [{ description: "Cable", unit: "metre", unit_price: 12 }] },
+    ],
+    scores: [],
+  });
+  const cable = comparison.lineItems[0];
+  assert.equal(cable.unit_price_comparable, true);
+  assert.equal(cable.lowest_unit_price, 10);
+  assert.equal(cable.highest_unit_price, 12);
+});
