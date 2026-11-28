@@ -313,3 +313,77 @@
     transition: none !important;
   }
 }
+
+
+/* Procurement-grade comparison surfaces. Keep dense data scannable and
+   horizontally navigable rather than shrinking text on narrow screens. */
+.scoring-weight-editor {
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.018);
+}
+.weight-editor-heading { display: grid; gap: 5px; margin-bottom: 12px; }
+.weight-editor-heading small, .weight-total { color: var(--faint); font-size: 9px; line-height: 1.5; }
+.weight-editor-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.weight-control { display: grid; gap: 5px; min-width: 0; }
+.weight-control > span:first-child { color: var(--muted); font-size: 9px; text-transform: capitalize; }
+.weight-control-input { display: flex; align-items: center; gap: 4px; }
+.weight-control-input input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font: 600 11px Manrope, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.weight-control-input small { color: var(--faint); font-size: 9px; }
+.weight-total { display: block; margin-top: 10px; }
+
+.procurement-comparison-stack { display: grid; gap: 14px; margin: 18px 0; }
+.comparison-lowest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  padding: 12px 14px;
+  border: 1px solid rgba(121,213,167,.22);
+  border-radius: 11px;
+  background: rgba(121,213,167,.045);
+}
+.comparison-lowest > div { display: grid; gap: 4px; }
+.comparison-lowest small { color: var(--muted); font-size: 9px; }
+.comparison-lowest > div strong { color: var(--text); font: 650 12px Manrope, sans-serif; }
+.comparison-lowest-price { color: var(--green); font: 750 17px Manrope, sans-serif; font-variant-numeric: tabular-nums; }
+.comparison-table-scroll { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; border: 1px solid var(--border); border-radius: 10px; }
+.comparison-matrix { min-width: 780px; width: 100%; border-collapse: separate; border-spacing: 0; }
+.comparison-matrix th, .comparison-matrix td { min-width: 145px; padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.comparison-matrix thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); color: var(--text); font: 650 10px Manrope, sans-serif; }
+.comparison-matrix thead th:first-child, .comparison-matrix tbody th { min-width: 165px; }
+.comparison-matrix thead th small, .comparison-matrix tbody th small { display: block; margin-top: 4px; color: var(--faint); font: 400 8px/1.4 inherit; overflow-wrap: anywhere; }
+.comparison-matrix tbody th { color: var(--muted); font-size: 9px; font-weight: 650; }
+.comparison-matrix td { color: var(--text); font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
+.comparison-matrix tr:last-child th, .comparison-matrix tr:last-child td { border-bottom: 0; }
+.itemized-matrix { min-width: 820px; }
+.itemized-matrix tbody th { color: var(--text); }
+.line-offer { display: grid; gap: 4px; min-width: 130px; }
+.line-offer > strong { color: var(--text); font-size: 10px; font-variant-numeric: tabular-nums; }
+.line-offer > strong small { color: var(--faint); font-size: 8px; font-weight: 500; }
+.line-offer > span, .line-offer > small { color: var(--muted); font-size: 8px; line-height: 1.45; }
+.not-listed { color: var(--faint); font-size: 9px; font-style: italic; }
+.comparison-footnote { margin: 10px 0 0; color: var(--faint); font-size: 9px; line-height: 1.55; }
+.quote-drop { cursor: pointer; }
+.quote-drop:focus-within, .quote-drop:hover { border-color: var(--border-strong); background: rgba(154,168,255,.035); }
+@media(max-width:760px) {
+  .weight-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comparison-lowest { align-items: flex-start; flex-direction: column; }
+  .comparison-lowest-price { font-size: 15px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .comparison-table-scroll { scroll-behavior: auto; }
+}
