@@ -420,9 +420,8 @@ function App() {
       </div>
 
       <section className="run-section">
-        <div className="section-label"><span>02 / OPERATIONS & REVIEW</span><div className="operations-header-actions"><small>Refreshes every four seconds while jobs are active</small><Button variant="quiet" onClick={() => void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Refresh failed."))}>Refresh ↻</Button></div></div>
-        <div className="operations-grid">
-          <Panel title="Run history" detail={filteredRuns.length + " of " + runs.length + " tracked runs · newest first"}>
+        <div className="section-label"><span>02 / RUN HISTORY</span><div className="operations-header-actions"><small>Refreshes every four seconds while jobs are active</small><Button variant="quiet" onClick={() => void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Refresh failed."))}>Refresh ↻</Button></div></div>
+        <Panel title="Run history" detail={filteredRuns.length + " of " + runs.length + " tracked runs · newest first"}>
             <div className="run-history-filters">
               <Field label="Search runs"><input type="search" value={runSearch} onChange={(event) => setRunSearch(event.target.value)} placeholder="Workflow or run reference"/></Field>
               <Field label="Status"><select value={runStatusFilter} onChange={(event) => setRunStatusFilter(event.target.value)}>
@@ -443,11 +442,14 @@ function App() {
               <StatusChip label={run.status.replace(/_/g, " ")} tone={run.status === "failed" ? "bad" : isActive(run.status) || run.status === "awaiting_approval" ? "warn" : "good"}/>
               <span className="run-row-chevron">↗</span>
             </button>) : <EmptyState title={runs.length ? "No matching runs" : "No workflow runs yet"} body={runs.length ? "Change the search or status filter to see more runs." : "Queue a workflow above. Its status and run reference will appear here."}/>}</div>
-          </Panel>
-          <Panel title="Approval queue" detail="Always visible · human decisions stay in the flow">
-            <ApprovalQueue approvals={approvals} reviewNotes={reviewNotes} setReviewNotes={setReviewNotes} onDecide={(item, decision, itemIndex) => void decideApproval(item, decision, itemIndex)} onInspect={inspectApprovalRun}/>
-          </Panel>
-        </div>
+        </Panel>
+      </section>
+
+      <section className="approval-section run-section" aria-labelledby="approval-queue-heading">
+        <div className="section-label" id="approval-queue-heading"><span>03 / APPROVAL QUEUE</span><small>Human review · decisions remain explicit</small></div>
+        <Panel title="Approval queue" detail="Review proposed content and actions independently from run monitoring.">
+          <ApprovalQueue approvals={approvals} reviewNotes={reviewNotes} setReviewNotes={setReviewNotes} onDecide={(item, decision, itemIndex) => void decideApproval(item, decision, itemIndex)} onInspect={inspectApprovalRun}/>
+        </Panel>
       </section>
       <footer className="product-footnote">Approval records authorization only. This demonstration has no connected publish or send action; no external content is published and no message is sent.</footer>
     </main>
