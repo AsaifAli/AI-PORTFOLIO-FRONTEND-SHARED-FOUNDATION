@@ -9,6 +9,7 @@ import {
   DEFAULT_SCORING_WEIGHTS,
   getAnalysisView,
   latestStageEvent,
+  mergeQuoteUploads,
   QUOTESENSE_PROCESSING_STAGES,
   scoreNumber,
   toComparisonCsv,
@@ -201,10 +202,7 @@ function App() {
 
   function updateFiles(incoming: FileList | null) {
     if (!incoming?.length) return;
-    const combined = [...files, ...Array.from(incoming)];
-    const unique = Array.from(new Map(
-      combined.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]),
-    ).values());
+    const unique = mergeQuoteUploads(files, Array.from(incoming));
     const validation = validateQuoteUploads(unique);
     if (validation) { setError(validation); return; }
     setError(""); setFiles(unique); setResult(null); setProcessingEvents([]); setDemoMode(false);
