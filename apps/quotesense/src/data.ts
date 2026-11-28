@@ -402,6 +402,20 @@ export function getProcurementComparison(result: QuoteAnalysis) {
     ? [...suppliers].filter((supplier) => scoreNumber(supplier.total_cost) !== null)
       .sort((a, b) => (scoreNumber(a.total_cost) ?? Infinity) - (scoreNumber(b.total_cost) ?? Infinity))[0]
     : undefined;
+  if (typeof matrix.cost_comparable !== "boolean" && currencyComparable && cheapest) {
+    const baseline = scoreNumber(cheapest.total_cost) ?? 0;
+    suppliers = suppliers.map((supplier) => {
+      const amount = scoreNumber(supplier.total_cost);
+      const difference = amount === null ? null : Number((amount - baseline).toFixed(2));
+      return {
+        ...supplier,
+        price_difference_from_lowest: difference,
+        percent_above_lowest: difference === null || baseline === 0
+          ? null
+          : Number((difference / baseline * 100).toFixed(2)),
+      };
+    });
+  }
   return {
     suppliers,
     lineItems,
