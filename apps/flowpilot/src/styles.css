@@ -47,9 +47,9 @@
 @media(max-width:600px){.run-canvas-steps{grid-template-columns:1fr}.run-canvas-step{padding:10px 1px 12px}}
 
 
-/* Always-visible operations workspace: history and human review share equal priority. */
-.operations-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;align-items:start}
-.operations-grid>*{min-width:0}
+/* Run monitoring and human review are separate, full-width workspace sections. */
+.approval-section{margin-top:22px}
+.approval-section>.panel{width:100%}
 .operations-header-actions{display:flex;align-items:center;gap:10px}
 .operations-header-actions>small{font-size:9px;color:var(--faint)}
 .run-history-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(145px,.62fr);gap:10px;padding:2px 0 10px}
@@ -79,5 +79,4 @@
 .run-canvas-activity-item.danger .run-canvas-activity-dot{background:var(--red)}
 .run-canvas-activity-item strong{font-size:9px;font-weight:550;color:var(--text)}
 .run-canvas-activity-item time{font-size:8px;color:var(--faint);text-align:right}
-@media(max-width:1000px){.operations-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.operations-header-actions{align-items:flex-end;flex-direction:column;gap:5px}.run-history-filters{grid-template-columns:1fr}.run-canvas-summary{grid-template-columns:1fr 1fr}.run-canvas-summary>div:last-child{grid-column:span 2}}
