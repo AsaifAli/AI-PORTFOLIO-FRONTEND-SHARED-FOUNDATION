@@ -313,3 +313,118 @@ test('parseExperimentComparisons returns an empty comparison for unsupported tar
   assert.equal(parseExperimentComparisons({ target: 'unknown', experiments: [] }), null);
   assert.equal(parseExperimentComparisons({ target: 'evidenceflow', experiments: [] }).experiments.length, 0);
 });
+
+
+test('source filter isolates native project checks from external framework scores', async () => {
+  const { filterRuntimeMetricSources } = await import('../src/dashboard-data.mjs');
+  const row = {
+    frameworkMetrics: {
+      'external.ragas.faithfulness': 0.94,
+      'external.deepeval.answer_relevancy': 0.89,
+    },
+    runtimeMetrics: {
+      'runtime.citation_coverage': 0.96,
+      'retrieval.chunk_count': 4,
+    },
+  };
+
+  assert.deepEqual(filterRuntimeMetricSources(row, 'native'), {
+    frameworkMetrics: {},
+    runtimeMetrics: {
+      'runtime.citation_coverage': 0.96,
+      'retrieval.chunk_count': 4,
+    },
+  });
+  assert.deepEqual(filterRuntimeMetricSources(row, 'ragas'), {
+    frameworkMetrics: { 'external.ragas.faithfulness': 0.94 },
+    runtimeMetrics: {},
+  });
+  assert.deepEqual(filterRuntimeMetricSources(row, 'deepeval'), {
+    frameworkMetrics: { 'external.deepeval.answer_relevancy': 0.89 },
+    runtimeMetrics: {},
+  });
+  assert.deepEqual(filterRuntimeMetricSources(row, 'all'), row);
+});
+
+test('runtime parser retains the complete public metric catalog for every project', async () => {
+  const catalogs = {
+    evidenceflow: [
+      'runtime.citation_coverage',
+      'runtime.citation_verification',
+      'runtime.grounding_verified',
+      'runtime.grounding_partial',
+      'runtime.trust_verified',
+      'runtime.trust_review_required',
+      'runtime.security_blocked',
+      'runtime.abstained',
+      'runtime.numeric_claims_supported',
+      'runtime.guardrail_finding_count',
+      'runtime.guardrail_blocked',
+      'evidence.verified_count',
+      'evidence.proposed_count',
+      'retrieval.chunk_count',
+      'retrieval.graph_expanded_chunk_count',
+      'retrieval.web_source_count',
+    ],
+    quotesense: [
+      'procurement.document_count',
+      'procurement.quote_count',
+      'runtime.extraction_completeness',
+      'runtime.quotation_validation_pass_rate',
+      'runtime.scoring_coverage',
+      'runtime.cost_comparability',
+      'runtime.comparable_line_item_rate',
+      'runtime.price_reconciliation_coverage',
+      'runtime.price_reconciliation_match_rate',
+      'runtime.price_reconciliation_review_rate',
+      'runtime.risk_finding_count',
+      'runtime.risked_quotation_rate',
+      'runtime.price_anomaly_count',
+      'runtime.analysis_available',
+      'runtime.recommendation_available',
+    ],
+    flowpilot: [
+      'runtime.workflow_completion',
+      'runtime.step_coverage',
+      'runtime.validation_completed',
+      'runtime.approval_compliance',
+      'runtime.approval_pending',
+      'runtime.audit_traceability',
+      'runtime.warning_count',
+    ],
+  };
+  const results = Object.entries(catalogs).map(([project, keys]) => ({
+    event_type: 'evaluation.completed',
+    created_at: '2026-11-28T08:00:00Z',
+    project,
+    metrics: Object.fromEntries(keys.map((key) => [
+      key,
+      key.endsWith('_count') || key.endsWith('.count') || key.includes('document_count') || key.includes('quote_count') ? 2 : 1,
+    ])),
+  }));
+  const { parseRuntimeEvaluations } = await import('../src/dashboard-data.mjs');
+  const parsed = parseRuntimeEvaluations({ results });
+
+  for (const [project, keys] of Object.entries(catalogs)) {
+    const row = parsed.find((item) => item.project === project);
+    assert.ok(row, project + ' runtime evidence should be retained');
+    assert.deepEqual(Object.keys(row.runtimeMetrics).sort(), [...keys].sort(), project + ' must expose every website metric');
+  }
+});
+
+
+test('metric formatting matches public evaluation semantics for ratios, counts and flags', async () => {
+  const { formatMetricValue, formatMetricDelta } = await import('../src/metric-presentation.mjs');
+
+  assert.equal(formatMetricValue('runtime.citation_verification', 1), '100.0%');
+  assert.equal(formatMetricValue('runtime.extraction_completeness', 0.925), '92.5%');
+  assert.equal(formatMetricValue('external.ragas.faithfulness', 0.94, true), '94.0%');
+  assert.equal(formatMetricValue('retrieval.chunk_count', 4), '4');
+  assert.equal(formatMetricValue('runtime.analysis_available', 0), 'No');
+  assert.equal(formatMetricValue('runtime.analysis_available', 1), 'Yes');
+  assert.equal(formatMetricValue('runtime.guardrail_blocked', 0), 'No');
+  assert.equal(formatMetricDelta('runtime.risk_finding_count', -1), '-1');
+  assert.equal(formatMetricDelta('runtime.analysis_available', 1), 'No → Yes');
+  assert.equal(formatMetricDelta('runtime.approval_pending', -1), 'Yes → No');
+  assert.equal(formatMetricDelta('runtime.citation_coverage', 0.04), '+4.0 pp');
+});

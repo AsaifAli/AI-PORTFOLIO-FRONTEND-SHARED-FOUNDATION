@@ -835,3 +835,113 @@ body {
 :root[data-theme="light"] .delta-chip b { color: #304258; }
 :root[data-theme="light"] .evaluation-metric-pill b { color: #287b92; }
 :root[data-theme="light"] .evaluation-metric-pill.native b { color: #765fc0; }
+
+
+/* Same detailed, project-first metric presentation as the public Studio page. */
+.runtime-project-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.runtime-project-card {
+  min-width: 0;
+  padding: 18px !important;
+  overflow: hidden;
+}
+.runtime-project-card.evidenceflow { border-top: 2px solid var(--cyan) !important; }
+.runtime-project-card.quotesense { border-top: 2px solid var(--violet) !important; }
+.runtime-project-card.flowpilot { border-top: 2px solid var(--green) !important; }
+.runtime-project-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.runtime-project-heading h3 {
+  margin: 5px 0 0;
+  font-size: 18px;
+  letter-spacing: -.04em;
+}
+.runtime-project-count {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.runtime-project-event {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.runtime-project-event:last-child { padding-bottom: 0; border-bottom: 0; }
+.runtime-project-event-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.runtime-project-event-head > strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.runtime-project-lineage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.runtime-project-lineage span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.runtime-project-lineage b {
+  color: var(--soft);
+  font-weight: 650;
+}
+.runtime-project-metric-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.runtime-project-metric-group {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.runtime-project-metric-group h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.runtime-project-metric-group .evaluation-metric-pills {
+  max-width: none;
+}
+.runtime-project-empty {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+@media(max-width:900px) {
+  .runtime-project-grid { grid-template-columns: 1fr; }
+}
+@media(max-width:560px) {
+  .runtime-project-card { padding: 15px !important; }
+  .runtime-project-event-head { align-items: flex-start; flex-direction: column; }
+}
+:root[data-theme="light"] .runtime-project-card {
+  border-color: #dbe4ed !important;
+  background: linear-gradient(155deg, #fff, #f7f9fc) !important;
+}
+:root[data-theme="light"] .runtime-project-heading,
+:root[data-theme="light"] .runtime-project-event { border-color: rgba(57,83,111,.1); }
