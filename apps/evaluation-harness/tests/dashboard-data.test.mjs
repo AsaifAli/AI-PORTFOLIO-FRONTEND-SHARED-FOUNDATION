@@ -411,3 +411,20 @@ test('runtime parser retains the complete public metric catalog for every projec
     assert.deepEqual(Object.keys(row.runtimeMetrics).sort(), [...keys].sort(), project + ' must expose every website metric');
   }
 });
+
+
+test('metric formatting matches public evaluation semantics for ratios, counts and flags', async () => {
+  const { formatMetricValue, formatMetricDelta } = await import('../src/metric-presentation.mjs');
+
+  assert.equal(formatMetricValue('runtime.citation_verification', 1), '100.0%');
+  assert.equal(formatMetricValue('runtime.extraction_completeness', 0.925), '92.5%');
+  assert.equal(formatMetricValue('external.ragas.faithfulness', 0.94, true), '94.0%');
+  assert.equal(formatMetricValue('retrieval.chunk_count', 4), '4');
+  assert.equal(formatMetricValue('runtime.analysis_available', 0), 'No');
+  assert.equal(formatMetricValue('runtime.analysis_available', 1), 'Yes');
+  assert.equal(formatMetricValue('runtime.guardrail_blocked', 0), 'No');
+  assert.equal(formatMetricDelta('runtime.risk_finding_count', -1), '-1');
+  assert.equal(formatMetricDelta('runtime.analysis_available', 1), 'No → Yes');
+  assert.equal(formatMetricDelta('runtime.approval_pending', -1), 'Yes → No');
+  assert.equal(formatMetricDelta('runtime.citation_coverage', 0.04), '+4.0 pp');
+});
